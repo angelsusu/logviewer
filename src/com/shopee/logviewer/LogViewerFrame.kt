@@ -1,6 +1,13 @@
 package com.shopee.logviewer
 
 import java.awt.BorderLayout
+import java.awt.Component
+import java.awt.datatransfer.DataFlavor
+import java.awt.dnd.DnDConstants
+import java.awt.dnd.DropTarget
+import java.awt.dnd.DropTargetAdapter
+import java.awt.dnd.DropTargetDropEvent
+import java.io.File
 import javax.swing.*
 import javax.swing.border.EmptyBorder
 import javax.swing.table.DefaultTableModel
@@ -12,49 +19,48 @@ import javax.swing.table.DefaultTableModel
  */
 class LogViewerFrame {
 
+    private lateinit var mFrame : JFrame
+
     fun showLogViewer() {
         val frame = JFrame("Android LogViewer") //创建Frame窗口
+        mFrame = frame
         frame.layout = BorderLayout() //为Frame窗口设置布局为BorderLayout
 
         val panel = JPanel()
         panel.layout = BorderLayout()
-        panel.add(getChooseFilePanel(), BorderLayout.NORTH)
-        panel.add(getFilterPanel(), BorderLayout.SOUTH)
-
-        frame.add(panel, BorderLayout.NORTH)
+        panel.add(getFilterPanel(), BorderLayout.NORTH)
+        panel.add(getLogContentPanel(), BorderLayout.CENTER)
         frame.add(getFilterTagPanel(), BorderLayout.WEST)
-        frame.add(getLogContentPanel(), BorderLayout.CENTER)
+        frame.add(panel, BorderLayout.CENTER)
         frame.isVisible = true
         frame.pack()
         frame.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
+        frame.setBounds(300, 300,900, 662)
+        supportFileDrag(frame)
     }
 
-    /**
-     * 文件选择对应布局
-     */
-    private fun getChooseFilePanel(): JPanel {
-        val button = JButton("choose file")
-        val jtf = JTextField(25)
-        button.addActionListener {
-            val fc = JFileChooser()
-            val dialog = fc.showOpenDialog(null) //文件打开对话框
-            if (dialog == JFileChooser.APPROVE_OPTION) {
-                //正常选择文件
-                jtf.text = fc.selectedFile.toString()
-            } else {
-                //未正常选择文件，如选择取消按钮
-                jtf.text = "no file choose"
+    private fun supportFileDrag(component: Component) {
+        DropTarget(component, DnDConstants.ACTION_COPY_OR_MOVE, object: DropTargetAdapter() {
+            override fun drop(dtde: DropTargetDropEvent?) {
+                try {
+                    //如果拖入的文件格式受支持
+                    if (dtde?.isDataFlavorSupported(DataFlavor.javaFileListFlavor) == true) {
+                        dtde.acceptDrop(DnDConstants.ACTION_COPY_OR_MOVE) //接收拖拽来的数据
+                        val fileList = dtde.transferable.getTransferData(DataFlavor.javaFileListFlavor) as? List<File>
+                        var temp = ""
+                        fileList?.forEach { file ->
+                            temp += file.absolutePath + ";\n"
+                            JOptionPane.showMessageDialog(null, temp)
+                        }
+                        dtde.dropComplete(true) //指示拖拽操作已完成
+                    } else {
+                        dtde?.rejectDrop() //否则拒绝拖拽来的数据
+                    }
+                } catch (e: Exception) {
+
+                }
             }
-        }
-        val parseButton = JButton("parse file")
-        parseButton.addActionListener {
-            //todo parse file
-        }
-        val jp = JPanel()
-        jp.add(button)
-        jp.add(jtf)
-        jp.add(parseButton)
-        return jp
+        })
     }
 
     /**
@@ -62,6 +68,8 @@ class LogViewerFrame {
      */
     private fun getFilterPanel(): JPanel {
         val jp = JPanel()
+        jp.border = EmptyBorder(5, 0, 5, 5) //设置面板的边框
+        jp.layout = BorderLayout(0, 0) //设置内容面板为边界布局
         val jtf = JTextField(25)
         val cmb = JComboBox<String>()
         Utils.logLevelList.forEach { item ->
@@ -71,10 +79,8 @@ class LogViewerFrame {
             val text = cmb.selectedItem
             println(text)
         }
-        val button = JButton("search")
-        jp.add(cmb)
-        jp.add(jtf)
-        jp.add(button)
+        jp.add(jtf, BorderLayout.CENTER)
+        jp.add(cmb, BorderLayout.EAST)
         return jp
     }
 
@@ -84,8 +90,8 @@ class LogViewerFrame {
     private fun getFilterTagPanel(): JPanel {
         val jp = JPanel()
         val label = JLabel("Filters:")
-        val addButton = JButton("add tag")
-        val delButton = JButton("delete tag")
+        val addButton = JButton("Add tag")
+        val delButton = JButton("Delete tag")
         jp.add(label)
         jp.add(addButton)
         jp.add(delButton)
@@ -100,7 +106,7 @@ class LogViewerFrame {
         list.selectionMode = ListSelectionModel.SINGLE_SELECTION
         scrollPane.setViewportView(list) //在滚动面板中显示列表
         addButton.addActionListener {
-            val result = JOptionPane.showInputDialog(panel, "please input tag", "FilterTag", 1)
+            FilterEditDialog(mFrame).showDialog()
         }
         return panel
     }
