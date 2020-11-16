@@ -1,6 +1,7 @@
 package com.shopee.logviewer.view
 
 import com.shopee.logviewer.data.FilterInfo
+import com.shopee.logviewer.data.ILogRepository
 import com.shopee.logviewer.data.LogRepository
 import com.shopee.logviewer.data.LogInfo
 import com.shopee.logviewer.listener.DoubleClickListener
@@ -27,7 +28,7 @@ import javax.swing.table.DefaultTableModel
  * author: beitingsu
  * created on: 2020/11/12
  */
-class LogViewerFrame {
+class LogViewerFrame: ILogRepository {
 
     private lateinit var mFrame : JFrame
 
@@ -35,32 +36,10 @@ class LogViewerFrame {
     private val mTagList = arrayListOf<String>()
     private val mFilterMap = hashMapOf<String, FilterInfo>()
 
-    private val logRepository = LogRepository()
+    /** 更新List的接口统一通过 [ILogRepository] callback */
+    private val logRepository = LogRepository(observer = this@LogViewerFrame)
 
     private lateinit var mContentTable: JTable
-    private val mLogParserHandler = LogParserHandler(object : ParseFinishListener {
-        override fun onParseFinish(logInfo: List<LogInfo>) {
-            logRepository.update(logInfo)
-
-            val filter = getHighlightFilter() ?: run {
-                refreshTables(logInfo)
-                return
-            }
-
-            refreshTables(logRepository.filterByFilterInfo(filter))
-        }
-    })
-
-    private fun refreshTables(logInfo: List<LogInfo>?) {
-        val tableModel = mContentTable.model as DefaultTableModel
-        tableModel.rowCount = 0
-
-        logInfo ?: return
-
-        logInfo.forEach { info ->
-            tableModel.addRow(arrayOf<Any>(info.time, info.level, info.tag, info.content))
-        }
-    }
 
     fun showLogViewer() {
         val frame = JFrame("Android LogViewer") //创建Frame窗口
@@ -93,7 +72,7 @@ class LogViewerFrame {
                             dtde.rejectDrop() //否则拒绝拖拽来的数据
                         } else {
                             val file = fileList?.get(0) ?: return
-                            mLogParserHandler.parse(file)
+                            sLogParserHandler.parse(file)
                         }
                         dtde.dropComplete(true) //指示拖拽操作已完成
                     } else {
@@ -205,16 +184,6 @@ class LogViewerFrame {
         ).showDialog()
     }
 
-    /** 添加新的Filter */
-    private fun onFilterAddRecv(filterInfo: FilterInfo) {
-        if (!mFilterMap.containsKey(filterInfo.name)) {
-            mTagList.add(filterInfo.name)
-        }
-
-        mFilterMap[filterInfo.name] = filterInfo
-        uiFilterList.setListData(mTagList.toTypedArray())
-    }
-
     /** 获取当前highlight的[FilterInfo] */
     private fun getHighlightFilter(): FilterInfo? {
         val filterName = uiFilterList.selectedValue ?: return null
@@ -223,6 +192,21 @@ class LogViewerFrame {
 
         return mFilterMap[filterName]
     }
+
+    /** Log解密回调 */
+    private val sLogParserHandler = LogParserHandler(object : ParseFinishListener {
+        override fun onParseFinish(logInfo: List<LogInfo>) {
+            // 更新元数据
+            logRepository.updateMeta(logInfo)
+
+            val filter = getHighlightFilter() ?: run {
+                refreshLogTables(logInfo)
+                return
+            }
+
+            logRepository.filter(filter)
+        }
+    })
 
     /** Filter添加Dialog监听器 */
     private val sFilterDialogClickListener = object : ClickListener {
@@ -242,6 +226,36 @@ class LogViewerFrame {
 
         val filter = getHighlightFilter() ?: return@ListSelectionListener
         print("filter:\n$filter")
-        refreshTables(logRepository.filterByFilterInfo(filter))
+        logRepository.filter(filter)
+    }
+
+    /** [ILogRepository] */
+    override fun onFilterResult(result: List<LogInfo>?) {
+        refreshLogTables(logInfo = result)
+    }
+
+    /** 添加新的Filter */
+    private fun onFilterAddRecv(filterInfo: FilterInfo) {
+        if (!mFilterMap.containsKey(filterInfo.name)) {
+            mTagList.add(filterInfo.name)
+        }
+
+        mFilterMap[filterInfo.name] = filterInfo
+        uiFilterList.setListData(mTagList.toTypedArray())
+
+        // 以最新的filter进行过滤
+        logRepository.filter(filterInfo)
+    }
+
+    /** 统一更新Filtered Log的入口 */
+    private fun refreshLogTables(logInfo: List<LogInfo>?) {
+        val tableModel = mContentTable.model as DefaultTableModel
+        tableModel.rowCount = 0
+
+        logInfo ?: return
+
+        logInfo.forEach { info ->
+            tableModel.addRow(arrayOf<Any>(info.time, info.level, info.tag, info.content))
+        }
     }
 }

@@ -3,14 +3,19 @@ package com.shopee.logviewer.data
 /**
  * @Author junzhang
  * @Time 2020/11/16
+ *
+ * @param observer 所有的过滤[filter]结果通过observer统一回调
  */
-class LogRepository {
+class LogRepository(
+        private val observer: ILogRepository
+) {
 
     /** 原始的log数据 */
     private val rawLogs: ArrayList<LogInfo> = arrayListOf()
 
-    fun update(infoList: List<LogInfo>) {
-        print("infoList.size[${infoList.size}]")
+    /** 更新元数据 */
+    fun updateMeta(infoList: List<LogInfo>) {
+        print("updateMeta() >>> infoList.size[${infoList.size}]")
         if (infoList.isEmpty()) {
             return
         }
@@ -19,11 +24,14 @@ class LogRepository {
         rawLogs.addAll(infoList)
     }
 
-    fun filterByFilterInfo(filterInfo: FilterInfo): List<LogInfo> {
-        return rawLogs.filter { logInfo ->
-            filterInfo.matchTag(logInfo) && // tag命中
-                    filterInfo.matchMsg(logInfo) // msg命中
-        }
+    /** @param filterInfo 根据[FilterInfo]过滤 */
+    fun filter(filterInfo: FilterInfo) {
+        observer.onFilterResult(
+                rawLogs.filter { logInfo ->
+                    filterInfo.matchTag(logInfo) && // tag命中
+                            filterInfo.matchMsg(logInfo) // msg命中
+                }
+        )
     }
 
     private fun FilterInfo.matchTag(logInfo: LogInfo): Boolean {
@@ -56,5 +64,11 @@ class LogRepository {
 
         return logInfo.content.contains(this.msg, true) // Log.Content包含target msg信息，命中
     }
+
+}
+
+interface ILogRepository {
+
+    fun onFilterResult(result: List<LogInfo>?)
 
 }
