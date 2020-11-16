@@ -8,6 +8,7 @@ import com.shopee.logviewer.util.LogParserHandler
 import com.shopee.logviewer.util.ParseFinishListener
 import com.shopee.logviewer.util.Utils
 import java.awt.BorderLayout
+import java.awt.Color
 import java.awt.Component
 import java.awt.datatransfer.DataFlavor
 import java.awt.dnd.DnDConstants
@@ -162,16 +163,15 @@ class LogViewerFrame {
         val contentPane = JPanel() //创建内容面板
         contentPane.border = EmptyBorder(5, 5, 5, 5) //设置面板的边框
         contentPane.layout = BorderLayout(0, 0) //设置内容面板为边界布局
-
         val table = JTable()
         val scrollPane = JScrollPane(table) //创建滚动面板
-
         val tableModel = table.model as DefaultTableModel //获得表格模型
         tableModel.rowCount = 0 //清空表格中的数据
         tableModel.setColumnIdentifiers(arrayOf<Any>("Time", "Level", "Tag", "Content")) //设置表头
         table.rowHeight = 30
         table.model = tableModel //应用表格模型
-
+        table.setShowGrid(true)
+        table.gridColor = Color.lightGray
         contentPane.add(scrollPane, BorderLayout.CENTER) //将面板增加到边界布局中央
         mContentTable = table
         return contentPane
