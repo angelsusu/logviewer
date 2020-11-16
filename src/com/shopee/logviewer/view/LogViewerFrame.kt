@@ -1,8 +1,11 @@
 package com.shopee.logviewer.view
 
 import com.shopee.logviewer.data.FilterInfo
+import com.shopee.logviewer.data.LogInfo
 import com.shopee.logviewer.listener.DoubleClickListener
 import com.shopee.logviewer.listener.LogMouseListener
+import com.shopee.logviewer.util.LogParserHandler
+import com.shopee.logviewer.util.ParseFinishListener
 import com.shopee.logviewer.util.Utils
 import java.awt.BorderLayout
 import java.awt.Component
@@ -37,6 +40,16 @@ class LogViewerFrame {
         }
     }
 
+    private lateinit var mContentTable: JTable
+    private val mLogParserHandler = LogParserHandler(object : ParseFinishListener {
+        override fun onParseFinish(logInfo: List<LogInfo>) {
+            val tableModel = mContentTable.model as DefaultTableModel //获得表格模型
+            logInfo.forEach { info ->
+                tableModel.addRow(arrayOf<Any>(info.time, info.level, info.tag, info.content))
+            }
+        }
+    })
+
     fun showLogViewer() {
         val frame = JFrame("Android LogViewer") //创建Frame窗口
         mFrame = frame
@@ -63,10 +76,12 @@ class LogViewerFrame {
                     if (dtde?.isDataFlavorSupported(DataFlavor.javaFileListFlavor) == true) {
                         dtde.acceptDrop(DnDConstants.ACTION_COPY_OR_MOVE) //接收拖拽来的数据
                         val fileList = dtde.transferable.getTransferData(DataFlavor.javaFileListFlavor) as? List<File>
-                        var temp = ""
-                        fileList?.forEach { file ->
-                            temp += file.absolutePath + ";\n"
-                            JOptionPane.showMessageDialog(null, temp)
+                        val fileSize = fileList?.size ?: 0
+                        if (fileSize > 1) {
+                            dtde.rejectDrop() //否则拒绝拖拽来的数据
+                        } else {
+                            val file = fileList?.get(0) ?: return
+                            mLogParserHandler.parse(file)
                         }
                         dtde.dropComplete(true) //指示拖拽操作已完成
                     } else {
@@ -158,6 +173,7 @@ class LogViewerFrame {
         table.model = tableModel //应用表格模型
 
         contentPane.add(scrollPane, BorderLayout.CENTER) //将面板增加到边界布局中央
+        mContentTable = table
         return contentPane
     }
 

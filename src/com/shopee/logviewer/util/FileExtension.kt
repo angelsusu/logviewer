@@ -1,6 +1,6 @@
 package com.shopee.logviewer.util
 
-import java.io.Closeable
+import java.io.*
 
 /**
  * author: beitingsu
@@ -25,5 +25,13 @@ inline fun <T : Closeable?, R> T.safelyUse(block: (T) -> R): R? {
         } catch (closeException: Throwable) {
 
         }
+    }
+}
+
+fun <T> File.safelyRead(block: (reader: BufferedReader) -> T): T? {
+    return safelyCreate {
+        BufferedReader(InputStreamReader(FileInputStream(this)))
+    }?.safelyUse { reader ->
+        block.invoke(reader)
     }
 }

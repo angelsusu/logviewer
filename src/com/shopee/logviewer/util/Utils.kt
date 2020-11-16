@@ -1,5 +1,7 @@
 package com.shopee.logviewer.util
 
+import com.google.gson.Gson
+
 /**
  * author: beitingsu
  * created on: 2020/11/12
@@ -13,7 +15,17 @@ object Utils {
             "Error" to 6
     )
 
+    val logLevelConvertMap = hashMapOf(
+            2 to "Verbose",
+            3 to "Debug",
+            4 to "Info",
+            5 to "Warning",
+            6 to "Error"
+    )
+
     val logLevelList = arrayListOf("Verbose", "Debug", "Info", "Warning", "Error")
+
+    val GSON = Gson()
 }
 
 object LogEncrypt {
