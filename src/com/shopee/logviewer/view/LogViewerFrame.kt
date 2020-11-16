@@ -1,6 +1,7 @@
 package com.shopee.logviewer.view
 
 import com.shopee.logviewer.data.FilterInfo
+import com.shopee.logviewer.data.LogRepository
 import com.shopee.logviewer.data.LogInfo
 import com.shopee.logviewer.listener.DoubleClickListener
 import com.shopee.logviewer.listener.LogMouseListener
@@ -29,9 +30,11 @@ class LogViewerFrame {
 
     private lateinit var mFrame : JFrame
 
-    private lateinit var mFilterList: JList<String>
+    private lateinit var uiFilterList: JList<String>
     private val mTagList = arrayListOf<String>()
     private val mFilterMap = hashMapOf<String, FilterInfo>()
+
+    private val logRepository = LogRepository()
 
     private val mFilterDialogClickListener = object : ClickListener {
         override fun onClick(clickType: Int, filterInfo: FilterInfo?) {
@@ -44,12 +47,28 @@ class LogViewerFrame {
     private lateinit var mContentTable: JTable
     private val mLogParserHandler = LogParserHandler(object : ParseFinishListener {
         override fun onParseFinish(logInfo: List<LogInfo>) {
-            val tableModel = mContentTable.model as DefaultTableModel //获得表格模型
+            logRepository.update(logInfo)
+
+            val filter = getHighlightFilter() ?: run {
+                updateTables(logInfo)
+                return
+            }
+
+            updateTables(logRepository.filterByFilterInfo(filter))
+        }
+    })
+
+    private fun updateTables(logInfo: List<LogInfo>?) {
+        mContentTable.model = DefaultTableModel().also { tableModel ->
+            logInfo ?: run {
+                return@also
+            }
+
             logInfo.forEach { info ->
                 tableModel.addRow(arrayOf<Any>(info.time, info.level, info.tag, info.content))
             }
         }
-    })
+    }
 
     fun showLogViewer() {
         val frame = JFrame("Android LogViewer") //创建Frame窗口
@@ -140,11 +159,13 @@ class LogViewerFrame {
         addButton.addActionListener {
             showFilterEditDialog()
         }
+
         delButton.addActionListener {
-            val selectItem = mFilterList.selectedValue
+            val selectItem = uiFilterList.selectedValue
             mTagList.remove(selectItem)
-            mFilterList.setListData(mTagList.toTypedArray())
+            uiFilterList.setListData(mTagList.toTypedArray())
         }
+
         list.addMouseListener(LogMouseListener(object : DoubleClickListener {
             override fun onDoubleClick() {
                 val selectItem = list.selectedValue
@@ -152,7 +173,7 @@ class LogViewerFrame {
                 showFilterEditDialog(filterInfo)
             }
         }))
-        mFilterList = list
+        uiFilterList = list
         return panel
     }
 
@@ -191,6 +212,15 @@ class LogViewerFrame {
         }
 
         mFilterMap[filterInfo.name] = filterInfo
-        mFilterList.setListData(mTagList.toTypedArray())
+        uiFilterList.setListData(mTagList.toTypedArray())
+    }
+
+    /** 获取当前highlight的[FilterInfo] */
+    private fun getHighlightFilter(): FilterInfo? {
+        val filterName = uiFilterList.selectedValue ?: return null
+
+        if (filterName.isBlank()) return null
+
+        return mFilterMap[filterName]
     }
 }
