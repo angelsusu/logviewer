@@ -1,6 +1,8 @@
 package com.shopee.logviewer.view
 
 import com.shopee.logviewer.data.FilterInfo
+import com.shopee.logviewer.data.ILogRepository
+import com.shopee.logviewer.data.LogRepository
 import com.shopee.logviewer.data.LogInfo
 import com.shopee.logviewer.listener.DoubleClickListener
 import com.shopee.logviewer.listener.LogMouseListener
@@ -20,6 +22,7 @@ import java.awt.dnd.DropTargetDropEvent
 import java.io.File
 import javax.swing.*
 import javax.swing.border.EmptyBorder
+import javax.swing.event.ListSelectionListener
 import javax.swing.table.DefaultTableModel
 
 
@@ -27,31 +30,18 @@ import javax.swing.table.DefaultTableModel
  * author: beitingsu
  * created on: 2020/11/12
  */
-class LogViewerFrame {
+class LogViewerFrame: ILogRepository {
 
     private lateinit var mFrame : JFrame
 
-    private lateinit var mFilterList: JList<String>
+    private lateinit var uiFilterList: JList<String>
     private val mTagList = arrayListOf<String>()
     private val mFilterMap = hashMapOf<String, FilterInfo>()
 
-    private val mFilterDialogClickListener = object : ClickListener {
-        override fun onClick(clickType: Int, filterInfo: FilterInfo?) {
-            when {
-                (clickType == ClickType.CLICK_TYPE_OK && null != filterInfo) -> onFilterRecv(filterInfo)
-            }
-        }
-    }
+    /** 更新List的接口统一通过 [ILogRepository] callback */
+    private val logRepository = LogRepository(observer = this@LogViewerFrame)
 
     private lateinit var mContentTable: JTable
-    private val mLogParserHandler = LogParserHandler(object : ParseFinishListener {
-        override fun onParseFinish(logInfo: List<LogInfo>) {
-            val tableModel = mContentTable.model as DefaultTableModel //获得表格模型
-            logInfo.forEach { info ->
-                tableModel.addRow(arrayOf<Any>(info.time, info.level, info.tag, info.content))
-            }
-        }
-    })
 
     fun showLogViewer() {
         val frame = JFrame("Android LogViewer") //创建Frame窗口
@@ -84,7 +74,7 @@ class LogViewerFrame {
                             dtde.rejectDrop() //否则拒绝拖拽来的数据
                         } else {
                             val file = fileList?.get(0) ?: return
-                            mLogParserHandler.parse(file)
+                            sLogParserHandler.parse(file)
                         }
                         dtde.dropComplete(true) //指示拖拽操作已完成
                     } else {
@@ -135,26 +125,35 @@ class LogViewerFrame {
         panel.add(jp, BorderLayout.NORTH)
         val scrollPane = JScrollPane() //创建滚动面板
         panel.add(scrollPane, BorderLayout.CENTER) //将面板增加到边界布局中央
-        val list = JList<String>()
-        //限制只能选择一个元素
-        list.selectionMode = ListSelectionModel.SINGLE_SELECTION
-        scrollPane.setViewportView(list) //在滚动面板中显示列表
+
         addButton.addActionListener {
             showFilterEditDialog()
         }
+
         delButton.addActionListener {
-            val selectItem = mFilterList.selectedValue
+            val selectItem = uiFilterList.selectedValue
             mTagList.remove(selectItem)
-            mFilterList.setListData(mTagList.toTypedArray())
+            uiFilterList.setListData(mTagList.toTypedArray())
         }
-        list.addMouseListener(LogMouseListener(object : DoubleClickListener {
-            override fun onDoubleClick() {
-                val selectItem = list.selectedValue
-                val filterInfo = mFilterMap[selectItem]
-                showFilterEditDialog(filterInfo)
-            }
-        }))
-        mFilterList = list
+
+        //在滚动面板中显示列表
+        scrollPane.setViewportView(JList<String>().also { list ->
+            // 限制只能选择一个元素
+            list.selectionMode = ListSelectionModel.SINGLE_SELECTION
+            // 选择监听器
+            list.addListSelectionListener(sFilterSelectListener)
+            // 双击查看详情
+            list.addMouseListener(LogMouseListener(object : DoubleClickListener {
+                override fun onDoubleClick() {
+                    val selectItem = list.selectedValue
+                    val filterInfo = mFilterMap[selectItem]
+                    showFilterEditDialog(filterInfo)
+                }
+            }))
+
+            uiFilterList = list
+        })
+
         return panel
     }
 
@@ -184,18 +183,84 @@ class LogViewerFrame {
     private fun showFilterEditDialog(filterInfo: FilterInfo? = null) {
         FilterEditDialog(
                 frame = mFrame,
-                clickListener = mFilterDialogClickListener,
+                clickListener = sFilterDialogClickListener,
                 filterData = filterInfo
         ).showDialog()
     }
 
-    private fun onFilterRecv(filterInfo: FilterInfo) {
+    /** 获取当前highlight的[FilterInfo] */
+    private fun getHighlightFilter(): FilterInfo? {
+        val filterName = uiFilterList.selectedValue ?: return null
+
+        if (filterName.isBlank()) return null
+
+        return mFilterMap[filterName]
+    }
+
+    /** Log解密回调 */
+    private val sLogParserHandler = LogParserHandler(object : ParseFinishListener {
+        override fun onParseFinish(logInfo: List<LogInfo>) {
+            // 更新元数据
+            logRepository.updateMeta(logInfo)
+
+            val filter = getHighlightFilter() ?: run {
+                refreshLogTables(logInfo)
+                return
+            }
+
+            logRepository.filter(filter)
+        }
+    })
+
+    /** Filter添加Dialog监听器 */
+    private val sFilterDialogClickListener = object : ClickListener {
+        override fun onClick(clickType: Int, filterInfo: FilterInfo?) {
+            when {
+                (clickType == ClickType.CLICK_TYPE_OK && null != filterInfo) -> onFilterAddRecv(filterInfo)
+            }
+        }
+    }
+
+    /** 左侧Filter栏点击触发器 */
+    private val sFilterSelectListener = ListSelectionListener { event ->
+        if (event.firstIndex != event.lastIndex) {
+            print("filter select index didn't support multi select:[${event.firstIndex} - ${event.lastIndex}]")
+            return@ListSelectionListener
+        }
+
+        val filter = getHighlightFilter() ?: return@ListSelectionListener
+        print("filter:\n$filter")
+        logRepository.filter(filter)
+    }
+
+    /** [ILogRepository] */
+    override fun onFilterResult(result: List<LogInfo>?) {
+        refreshLogTables(logInfo = result)
+    }
+
+    /** 添加新的Filter */
+    private fun onFilterAddRecv(filterInfo: FilterInfo) {
         if (!mFilterMap.containsKey(filterInfo.name)) {
             mTagList.add(filterInfo.name)
         }
 
         mFilterMap[filterInfo.name] = filterInfo
-        mFilterList.setListData(mTagList.toTypedArray())
+        uiFilterList.setListData(mTagList.toTypedArray())
+
+        // 以最新的filter进行过滤
+        logRepository.filter(filterInfo)
+    }
+
+    /** 统一更新Filtered Log的入口 */
+    private fun refreshLogTables(logInfo: List<LogInfo>?) {
+        val tableModel = mContentTable.model as DefaultTableModel
+        tableModel.rowCount = 0
+
+        logInfo ?: return
+
+        logInfo.forEach { info ->
+            tableModel.addRow(arrayOf<Any>(info.time, info.level, info.tag, info.content))
+        }
     }
 
     private fun initPopupCopyMenu(component: JTable) {
