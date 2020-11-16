@@ -19,6 +19,7 @@ import java.awt.dnd.DropTargetDropEvent
 import java.io.File
 import javax.swing.*
 import javax.swing.border.EmptyBorder
+import javax.swing.event.ListSelectionListener
 import javax.swing.table.DefaultTableModel
 
 
@@ -36,37 +37,28 @@ class LogViewerFrame {
 
     private val logRepository = LogRepository()
 
-    private val mFilterDialogClickListener = object : ClickListener {
-        override fun onClick(clickType: Int, filterInfo: FilterInfo?) {
-            when {
-                (clickType == ClickType.CLICK_TYPE_OK && null != filterInfo) -> onFilterRecv(filterInfo)
-            }
-        }
-    }
-
     private lateinit var mContentTable: JTable
     private val mLogParserHandler = LogParserHandler(object : ParseFinishListener {
         override fun onParseFinish(logInfo: List<LogInfo>) {
             logRepository.update(logInfo)
 
             val filter = getHighlightFilter() ?: run {
-                updateTables(logInfo)
+                refreshTables(logInfo)
                 return
             }
 
-            updateTables(logRepository.filterByFilterInfo(filter))
+            refreshTables(logRepository.filterByFilterInfo(filter))
         }
     })
 
-    private fun updateTables(logInfo: List<LogInfo>?) {
-        mContentTable.model = DefaultTableModel().also { tableModel ->
-            logInfo ?: run {
-                return@also
-            }
+    private fun refreshTables(logInfo: List<LogInfo>?) {
+        val tableModel = mContentTable.model as DefaultTableModel
+        tableModel.rowCount = 0
 
-            logInfo.forEach { info ->
-                tableModel.addRow(arrayOf<Any>(info.time, info.level, info.tag, info.content))
-            }
+        logInfo ?: return
+
+        logInfo.forEach { info ->
+            tableModel.addRow(arrayOf<Any>(info.time, info.level, info.tag, info.content))
         }
     }
 
@@ -152,10 +144,7 @@ class LogViewerFrame {
         panel.add(jp, BorderLayout.NORTH)
         val scrollPane = JScrollPane() //创建滚动面板
         panel.add(scrollPane, BorderLayout.CENTER) //将面板增加到边界布局中央
-        val list = JList<String>()
-        //限制只能选择一个元素
-        list.selectionMode = ListSelectionModel.SINGLE_SELECTION
-        scrollPane.setViewportView(list) //在滚动面板中显示列表
+
         addButton.addActionListener {
             showFilterEditDialog()
         }
@@ -166,14 +155,24 @@ class LogViewerFrame {
             uiFilterList.setListData(mTagList.toTypedArray())
         }
 
-        list.addMouseListener(LogMouseListener(object : DoubleClickListener {
-            override fun onDoubleClick() {
-                val selectItem = list.selectedValue
-                val filterInfo = mFilterMap[selectItem]
-                showFilterEditDialog(filterInfo)
-            }
-        }))
-        uiFilterList = list
+        //在滚动面板中显示列表
+        scrollPane.setViewportView(JList<String>().also { list ->
+            // 限制只能选择一个元素
+            list.selectionMode = ListSelectionModel.SINGLE_SELECTION
+            // 选择监听器
+            list.addListSelectionListener(sFilterSelectListener)
+            // 双击查看详情
+            list.addMouseListener(LogMouseListener(object : DoubleClickListener {
+                override fun onDoubleClick() {
+                    val selectItem = list.selectedValue
+                    val filterInfo = mFilterMap[selectItem]
+                    showFilterEditDialog(filterInfo)
+                }
+            }))
+
+            uiFilterList = list
+        })
+
         return panel
     }
 
@@ -201,12 +200,13 @@ class LogViewerFrame {
     private fun showFilterEditDialog(filterInfo: FilterInfo? = null) {
         FilterEditDialog(
                 frame = mFrame,
-                clickListener = mFilterDialogClickListener,
+                clickListener = sFilterDialogClickListener,
                 filterData = filterInfo
         ).showDialog()
     }
 
-    private fun onFilterRecv(filterInfo: FilterInfo) {
+    /** 添加新的Filter */
+    private fun onFilterAddRecv(filterInfo: FilterInfo) {
         if (!mFilterMap.containsKey(filterInfo.name)) {
             mTagList.add(filterInfo.name)
         }
@@ -222,5 +222,26 @@ class LogViewerFrame {
         if (filterName.isBlank()) return null
 
         return mFilterMap[filterName]
+    }
+
+    /** Filter添加Dialog监听器 */
+    private val sFilterDialogClickListener = object : ClickListener {
+        override fun onClick(clickType: Int, filterInfo: FilterInfo?) {
+            when {
+                (clickType == ClickType.CLICK_TYPE_OK && null != filterInfo) -> onFilterAddRecv(filterInfo)
+            }
+        }
+    }
+
+    /** 左侧Filter栏点击触发器 */
+    private val sFilterSelectListener = ListSelectionListener { event ->
+        if (event.firstIndex != event.lastIndex) {
+            print("filter select index didn't support multi select:[${event.firstIndex} - ${event.lastIndex}]")
+            return@ListSelectionListener
+        }
+
+        val filter = getHighlightFilter() ?: return@ListSelectionListener
+        print("filter:\n$filter")
+        refreshTables(logRepository.filterByFilterInfo(filter))
     }
 }
