@@ -10,7 +10,9 @@ import com.shopee.logviewer.util.Utils
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
+import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
+import java.awt.datatransfer.StringSelection
 import java.awt.dnd.DnDConstants
 import java.awt.dnd.DropTarget
 import java.awt.dnd.DropTargetAdapter
@@ -173,6 +175,8 @@ class LogViewerFrame {
         table.setShowGrid(true)
         table.gridColor = Color.lightGray
         contentPane.add(scrollPane, BorderLayout.CENTER) //将面板增加到边界布局中央
+        table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION)
+        initPopupCopyMenu(table)
         mContentTable = table
         return contentPane
     }
@@ -192,5 +196,29 @@ class LogViewerFrame {
 
         mFilterMap[filterInfo.name] = filterInfo
         mFilterList.setListData(mTagList.toTypedArray())
+    }
+
+    private fun initPopupCopyMenu(component: JTable) {
+        val menu = PopupCopyMenu(component, object : PopupCopyMenuClickListener {
+            override fun onClick(clickType: Int) {
+                if (clickType == MenuClickType.CLICK_TYPE_COPY) {
+                    //copy选中数据
+                    val rowCount = mContentTable.selectedRows
+                    val listInfo = arrayListOf<LogInfo>()
+                    for (index in rowCount.indices) {
+                        val time = mContentTable.getValueAt(index, 0) as String
+                        val level = mContentTable.getValueAt(index, 1) as String
+                        val tag = mContentTable.getValueAt(index, 2) as String
+                        val content = mContentTable.getValueAt(index, 3) as String
+                        val logInfo = LogInfo(time, tag, level, content)
+                        listInfo.add(logInfo)
+                    }
+                    val cb = Toolkit.getDefaultToolkit().systemClipboard
+                    val trans = StringSelection(Utils.GSON.toJson(listInfo))
+                    cb.setContents(trans, null)
+                }
+            }
+        })
+        menu.init()
     }
 }
