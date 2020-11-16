@@ -1,5 +1,10 @@
 package com.shopee.logviewer.data
 
+import java.util.concurrent.BlockingDeque
+import java.util.concurrent.BlockingQueue
+import java.util.concurrent.LinkedBlockingQueue
+import javax.swing.SwingUtilities
+
 /**
  * @Author junzhang
  * @Time 2020/11/16
@@ -12,6 +17,8 @@ class LogRepository(
 
     /** 原始的log数据 */
     private val rawLogs: ArrayList<LogInfo> = arrayListOf()
+    /** 过滤工作线程 */
+    //private val workThread = WorkThread()
 
     /** 更新元数据 */
     fun updateMeta(infoList: List<LogInfo>) {
@@ -26,12 +33,15 @@ class LogRepository(
 
     /** @param filterInfo 根据[FilterInfo]过滤 */
     fun filter(filterInfo: FilterInfo) {
-        observer.onFilterResult(
-                rawLogs.filter { logInfo ->
-                    filterInfo.matchTag(logInfo) && // tag命中
-                            filterInfo.matchMsg(logInfo) // msg命中
-                }
-        )
+        //workThread.offer(Runnable {
+            val filterResult = rawLogs.filter { logInfo ->
+                filterInfo.matchTag(logInfo) && filterInfo.matchMsg(logInfo)
+            }
+
+            SwingUtilities.invokeLater {
+                observer.onFilterResult(filterInfo, filterResult)
+            }
+        //})
     }
 
     private fun FilterInfo.matchTag(logInfo: LogInfo): Boolean {
@@ -65,10 +75,26 @@ class LogRepository(
         return logInfo.content.contains(this.msg, true) // Log.Content包含target msg信息，命中
     }
 
+    inner class WorkThread(
+            private val rBlockQueue: BlockingQueue<Runnable> = LinkedBlockingQueue<Runnable>()
+    ): Thread("filter-thread") {
+
+        fun offer(r: Runnable) {
+            while (!rBlockQueue.offer(r)) {
+                sleep(500)
+            }
+        }
+
+        override fun run() {
+            while (true) {
+                rBlockQueue.take().run()
+            }
+        }
+    }
 }
 
 interface ILogRepository {
 
-    fun onFilterResult(result: List<LogInfo>?)
+    fun onFilterResult(filterInfo: FilterInfo, result: List<LogInfo>?)
 
 }

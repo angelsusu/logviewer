@@ -29,6 +29,8 @@ import javax.swing.table.DefaultTableModel
 /**
  * author: beitingsu
  * created on: 2020/11/12
+ *
+ * 如果你跟我一样，running过程中一切换回IDE就crash，试试切换下JDK的版本：https://youtrack.jetbrains.com/issue/JBR-2159
  */
 class LogViewerFrame: ILogRepository {
 
@@ -234,7 +236,7 @@ class LogViewerFrame: ILogRepository {
     }
 
     /** [ILogRepository] */
-    override fun onFilterResult(result: List<LogInfo>?) {
+    override fun onFilterResult(filterInfo: FilterInfo, result: List<LogInfo>?) {
         refreshLogTables(logInfo = result)
     }
 
