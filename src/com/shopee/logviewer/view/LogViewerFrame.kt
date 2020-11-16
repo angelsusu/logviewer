@@ -26,17 +26,13 @@ class LogViewerFrame {
     private lateinit var mFrame : JFrame
 
     private lateinit var mFilterList: JList<String>
-    private var mTagList = arrayListOf<String>()
-    private var mFilterMap = hashMapOf<String, FilterInfo>()
+    private val mTagList = arrayListOf<String>()
+    private val mFilterMap = hashMapOf<String, FilterInfo>()
 
     private val mFilterDialogClickListener = object : ClickListener {
         override fun onClick(clickType: Int, filterInfo: FilterInfo?) {
-            if (clickType == ClickType.CLICK_TYPE_OK && filterInfo != null) {
-                if (!mFilterMap.containsKey(filterInfo.name)) {
-                    mTagList.add(filterInfo.name)
-                }
-                mFilterMap[filterInfo.name] = filterInfo
-                mFilterList.setListData(mTagList.toTypedArray())
+            when {
+                (clickType == ClickType.CLICK_TYPE_OK && null != filterInfo) -> onFilterRecv(filterInfo)
             }
         }
     }
@@ -166,10 +162,19 @@ class LogViewerFrame {
     }
 
     private fun showFilterEditDialog(filterInfo: FilterInfo? = null) {
-        FilterEditDialog(mFrame).apply {
-            clickListener = mFilterDialogClickListener
-            filterData = filterInfo
-            showDialog()
+        FilterEditDialog(
+                frame = mFrame,
+                clickListener = mFilterDialogClickListener,
+                filterData = filterInfo
+        ).showDialog()
+    }
+
+    private fun onFilterRecv(filterInfo: FilterInfo) {
+        if (!mFilterMap.containsKey(filterInfo.name)) {
+            mTagList.add(filterInfo.name)
         }
+
+        mFilterMap[filterInfo.name] = filterInfo
+        mFilterList.setListData(mTagList.toTypedArray())
     }
 }

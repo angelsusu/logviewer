@@ -5,4 +5,8 @@ package com.shopee.logviewer.data
  * created on: 2020/11/13
  * 过滤信息
  */
-data class FilterInfo(val name: String, val msg: String? = "", val tagList: List<String>? = null)
+data class FilterInfo(
+        val name: String,                   /** 过滤器自定义名称 */
+        val msg: String? = "",              /** 过滤规则1: [LogInfo].msg.contains(msg)  */
+        val tagList: List<String>? = null   /** 过滤规则2: tagList.any { it == [LogInfo].tag } */
+)

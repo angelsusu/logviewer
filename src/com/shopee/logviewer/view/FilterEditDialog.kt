@@ -10,15 +10,16 @@ import javax.swing.border.EmptyBorder
  * author: beitingsu
  * created on: 2020/11/13
  */
-class FilterEditDialog(frame: JFrame): JDialog(frame) {
-
-    var clickListener: ClickListener? = null
-    var filterData: FilterInfo? = null
+class FilterEditDialog(
+        frame: JFrame,
+        private val clickListener: ClickListener,
+        private val filterData: FilterInfo?
+): JDialog(frame) {
 
     private lateinit var mFilterNameText: JTextField
     private lateinit var mFilterMsgText: JTextField
     private lateinit var mFilterTagList: JList<String>
-    private var mTagList = arrayListOf<String>()
+    private val mTagList = arrayListOf<String>()
 
     init {
         setSize(615, 500)
@@ -120,7 +121,7 @@ class FilterEditDialog(frame: JFrame): JDialog(frame) {
         scrollPane.setViewportView(list) //在滚动面板中显示列表
         panel.add(scrollPane, BorderLayout.CENTER) //将面板增加到边界布局中央
         if (filterData?.tagList?.isNullOrEmpty() == false) {
-            list.setListData(filterData?.tagList?.toTypedArray())
+            list.setListData(filterData.tagList.toTypedArray())
         }
         mFilterTagList = list
         return panel
@@ -131,12 +132,12 @@ class FilterEditDialog(frame: JFrame): JDialog(frame) {
         panel.border = EmptyBorder(5, 400, 5, 5) //设置面板的边框
         val cancelBtn = JButton("Cancel")
         cancelBtn.addActionListener {
-            clickListener?.onClick(ClickType.CLICK_TYPE_CANCEL)
+            clickListener.onClick(ClickType.CLICK_TYPE_CANCEL)
             dispose()
         }
         val okBtn = JButton("Ok")
         okBtn.addActionListener {
-            clickListener?.onClick(ClickType.CLICK_TYPE_OK, getFilterInfo())
+            clickListener.onClick(ClickType.CLICK_TYPE_OK, getFilterInfo())
             dispose()
         }
         panel.add(cancelBtn)
@@ -147,7 +148,7 @@ class FilterEditDialog(frame: JFrame): JDialog(frame) {
     private fun getFilterInfo(): FilterInfo {
         val name = mFilterNameText.text
         val msg = mFilterMsgText.text
-        return FilterInfo(name, msg, mTagList)
+        return FilterInfo(name = name, msg = msg, tagList = mTagList.toList())
     }
 }
 
