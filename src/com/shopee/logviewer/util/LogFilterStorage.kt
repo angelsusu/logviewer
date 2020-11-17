@@ -93,6 +93,14 @@ object LogFilterStorage {
         mFilterInfoList.remove(filterInfo)
         parseJsonToXml()
     }
+
+    fun clear() {
+        mFilterInfoList.clear()
+        val file = File(DIR_NAME + FILE_NAME)
+        if (file.exists()) {
+            file.delete()
+        }
+    }
 }
 
 interface OnFilterLoadedListener {

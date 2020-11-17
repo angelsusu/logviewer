@@ -140,12 +140,12 @@ class LogViewerFrame: ILogRepository {
      */
     private fun getFilterTagPanel(): JPanel {
         val jp = JPanel()
-        val label = JLabel("Filters:")
-        val addButton = JButton("Add tag")
-        val delButton = JButton("Delete tag")
-        jp.add(label)
+        val addButton = JButton("Add")
+        val delButton = JButton("Delete")
+        val clearButton = JButton("Clear")
         jp.add(addButton)
         jp.add(delButton)
+        jp.add(clearButton)
         val panel = JPanel()
         panel.border = EmptyBorder(0, 5, 5, 5) //设置面板的边框
         panel.layout = BorderLayout(0, 0) //设置内容面板为边界布局
@@ -159,6 +159,9 @@ class LogViewerFrame: ILogRepository {
 
         // 删除按钮
         delButton.addActionListener(sTagMsgFilterDeleteListener)
+
+        // 清空按钮
+        clearButton.addActionListener(sTagMsgFilterClearListener)
 
         //在滚动面板中显示列表
         scrollPane.setViewportView(JList<String>().also { list ->
@@ -358,5 +361,13 @@ class LogViewerFrame: ILogRepository {
             }
         })
         menu.init()
+    }
+
+    /** 自定义过滤条件清除后点击事件 */
+    private val sTagMsgFilterClearListener = ActionListener {
+        mTagList.clear()
+        mFilterMap.clear()
+        uiFilterList.setListData(mTagList.toTypedArray())
+        LogFilterStorage.clear()
     }
 }
