@@ -12,10 +12,7 @@ import com.shopee.logviewer.listener.DoubleClickListener
 import com.shopee.logviewer.listener.LogMouseListener
 import com.shopee.logviewer.util.*
 import com.shopee.logviewer.util.Utils.toEnumLevel
-import java.awt.BorderLayout
-import java.awt.Color
-import java.awt.Component
-import java.awt.Toolkit
+import java.awt.*
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
 import java.awt.dnd.DnDConstants
@@ -41,10 +38,14 @@ import javax.swing.table.DefaultTableModel
  */
 class LogViewerFrame: ILogRepository {
 
-    private lateinit var mFrame : JFrame
+    private val uiFrame = fastLazy {
+        buildFrame()
+    }
 
     /** key: [FilterInfo.name] */
-    private lateinit var uiFilterList: JList<String>
+    private val uiScrollerJList = fastLazy {
+        buildFilterScrollerJList()
+    }
 
     private val mTagList = arrayListOf<String>()
     private val mFilterMap = hashMapOf<String, FilterInfo>()
@@ -62,29 +63,47 @@ class LogViewerFrame: ILogRepository {
                 filterInfoList.forEach { filterInfo ->
                     addFilterInfo(filterInfo)
                 }
-                if (::uiFilterList.isInitialized) {
-                    uiFilterList.setListData(mTagList.toTypedArray())
-                }
+
+                uiScrollerJList.value.setListData(mTagList.toTypedArray())
             }
         })
     }
 
     fun showLogViewer() {
-        val frame = JFrame("Android LogViewer") //创建Frame窗口
-        mFrame = frame
-        frame.layout = BorderLayout() //为Frame窗口设置布局为BorderLayout
+        supportFileDrag(uiFrame.value)
+    }
 
-        val panel = JPanel()
-        panel.layout = BorderLayout()
-        panel.add(getFilterPanel(), BorderLayout.NORTH)
-        panel.add(getLogContentPanel(), BorderLayout.CENTER)
-        frame.add(getFilterTagPanel(), BorderLayout.WEST)
-        frame.add(panel, BorderLayout.CENTER)
+    private fun buildFrame(): JFrame = JFrame("Android LogViewer").also { frame ->
+        frame.layout = BorderLayout() //为Frame窗口设置布局为BorderLayout
+        frame.add(JPanel().also { panel ->
+            panel.layout = BorderLayout()
+            panel.add(filterPanel, BorderLayout.NORTH)
+            panel.add(getLogContentPanel(), BorderLayout.CENTER)
+        }, BorderLayout.CENTER)
+
+        frame.add(filterTagPanel, BorderLayout.WEST)
         frame.isVisible = true
         frame.pack()
         frame.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
         frame.setBounds(300, 300,900, 662)
-        supportFileDrag(frame)
+    }
+
+    /** 左侧Filter Scroller Content Adapter */
+    private fun buildFilterScrollerJList(): JList<String> = JList<String>().also { list ->
+        // 限制只能选择一个元素
+        list.selectionMode = ListSelectionModel.SINGLE_SELECTION
+        // 选择监听器
+        list.addListSelectionListener(sFilterSelectListener)
+        // 双击查看详情
+        list.addMouseListener(LogMouseListener(object : DoubleClickListener {
+            override fun onDoubleClick() {
+                val selectItem = list.selectedValue ?: return
+                val filterInfo = mFilterMap[selectItem] ?: return
+                showFilterEditDialog(filterInfo)
+            }
+        }))
+
+        list.setListData(mTagList.toTypedArray())
     }
 
     private fun supportFileDrag(component: Component) {
@@ -116,16 +135,14 @@ class LogViewerFrame: ILogRepository {
     /**
      * 日志过滤、搜索对应布局
      */
-    private fun getFilterPanel(): JPanel {
-        val jp = JPanel()
-        jp.border = EmptyBorder(5, 0, 5, 5) //设置面板的边框
-        jp.layout = BorderLayout(0, 0) //设置内容面板为边界布局
+    private val filterPanel: JPanel
+        get() = JPanel().also { jp ->
+            jp.border = EmptyBorder(5, 0, 5, 5) //设置面板的边框
+            jp.layout = BorderLayout(0, 0) //设置内容面板为边界布局
 
-        jp.add(msgFilterField, BorderLayout.CENTER)
-        jp.add(logLevelBox, BorderLayout.EAST)
-
-        return jp
-    }
+            jp.add(msgFilterField, BorderLayout.CENTER)
+            jp.add(logLevelBox, BorderLayout.EAST)
+        }
 
     private val msgFilterField: JTextField
         get() = JTextField(25).also { field ->
@@ -145,50 +162,32 @@ class LogViewerFrame: ILogRepository {
     /**
      * 过滤器对应的布局
      */
-    private fun getFilterTagPanel(): JPanel {
-        val jp = JPanel()
-        val addButton = JButton("Add")
-        val delButton = JButton("Delete")
-        val clearButton = JButton("Clear")
-        jp.add(addButton)
-        jp.add(delButton)
-        jp.add(clearButton)
-        val panel = JPanel()
-        panel.border = EmptyBorder(0, 5, 5, 5) //设置面板的边框
-        panel.layout = BorderLayout(0, 0) //设置内容面板为边界布局
-        panel.add(jp, BorderLayout.NORTH)
-        val scrollPane = JScrollPane() //创建滚动面板
-        panel.add(scrollPane, BorderLayout.CENTER) //将面板增加到边界布局中央
-
-        addButton.addActionListener {
-            showFilterEditDialog()
+    private val filterTagPanel: JPanel
+        get() = JPanel().apply {
+            border = EmptyBorder(0, 5, 5, 5) //设置面板的边框
+            layout = BorderLayout(0, 0) //设置内容面板为边界布局
+            add(filterTagBtnPanel, BorderLayout.NORTH)
+            add(filterTagScroller, BorderLayout.CENTER) // 创建滚动面板，将面板增加到边界布局中央
         }
 
-        // 删除按钮
-        delButton.addActionListener(sTagMsgFilterDeleteListener)
+    /** 左侧Filter Scroller列表 */
+    private val filterTagScroller: JScrollPane
+        get() = JScrollPane().also { scrollPane ->
+            scrollPane.setViewportView(uiScrollerJList.value) //在滚动面板中显示列表
+        }
 
-        // 清空按钮
-        clearButton.addActionListener(sTagMsgFilterClearListener)
+    /** 左上角Filter操作区域 */
+    private val filterTagBtnPanel: JPanel
+        get() = JPanel().also { jp ->
+            jp.add(buildFilterTagProcessBtn(btnName = "Add", actionListener = ActionListener { showFilterEditDialog() }))
+            jp.add(buildFilterTagProcessBtn(btnName = "Delete", actionListener = sTagMsgFilterDeleteListener))
+            jp.add(buildFilterTagProcessBtn(btnName = "Clear", actionListener = sTagMsgFilterClearListener))
+        }
 
-        //在滚动面板中显示列表
-        scrollPane.setViewportView(JList<String>().also { list ->
-            // 限制只能选择一个元素
-            list.selectionMode = ListSelectionModel.SINGLE_SELECTION
-            // 选择监听器
-            list.addListSelectionListener(sFilterSelectListener)
-            // 双击查看详情
-            list.addMouseListener(LogMouseListener(object : DoubleClickListener {
-                override fun onDoubleClick() {
-                    val selectItem = list.selectedValue
-                    val filterInfo = mFilterMap[selectItem]
-                    showFilterEditDialog(filterInfo)
-                }
-            }))
-
-            uiFilterList = list
-        })
-        uiFilterList.setListData(mTagList.toTypedArray())
-        return panel
+    private fun buildFilterTagProcessBtn(btnName: String, actionListener: ActionListener?): JButton {
+        return JButton(btnName).also { btn ->
+            btn.addActionListener(actionListener)
+        }
     }
 
     /**
@@ -220,7 +219,7 @@ class LogViewerFrame: ILogRepository {
 
     private fun showFilterEditDialog(filterInfo: FilterInfo? = null) {
         FilterEditDialog(
-                frame = mFrame,
+                frame = uiFrame.value,
                 clickListener = sFilterDialogClickListener,
                 filterData = filterInfo
         ).showDialog()
@@ -228,7 +227,7 @@ class LogViewerFrame: ILogRepository {
 
     /** 获取当前highlight的[FilterInfo] */
     private fun getHighlightFilter(): FilterInfo? {
-        val filterName = uiFilterList.selectedValue ?: return null
+        val filterName = uiScrollerJList.value.selectedValue ?: return null
 
         if (filterName.isBlank()) return null
 
@@ -278,7 +277,7 @@ class LogViewerFrame: ILogRepository {
 
     /** 自定义过滤条件删除后点击事件 */
     private val sTagMsgFilterDeleteListener = ActionListener {
-        val filterName: String = uiFilterList.selectedValue ?: return@ActionListener
+        val filterName: String = uiScrollerJList.value.selectedValue ?: return@ActionListener
 
         print("FilterDeleteListener >>> filterName[$filterName]")
         if (!mTagList.remove(filterName)) {
@@ -286,7 +285,7 @@ class LogViewerFrame: ILogRepository {
         }
 
         // 删除侧边栏UI Tag
-        uiFilterList.setListData(mTagList.toTypedArray())
+        uiScrollerJList.value.setListData(mTagList.toTypedArray())
 
         val filterInfo = mFilterMap[filterName] ?: return@ActionListener
 
@@ -322,7 +321,7 @@ class LogViewerFrame: ILogRepository {
     /** 添加新的Filter */
     private fun onFilterAddRecv(filterInfo: FilterInfo) {
         addFilterInfo(filterInfo)
-        uiFilterList.setListData(mTagList.toTypedArray())
+        uiScrollerJList.value.setListData(mTagList.toTypedArray())
 
         // 以最新的filter进行过滤
         logRepository.addFilter(filterInfo)
@@ -391,28 +390,20 @@ class LogViewerFrame: ILogRepository {
     private val sTagMsgFilterClearListener = ActionListener {
         mTagList.clear()
         mFilterMap.clear()
-        uiFilterList.setListData(mTagList.toTypedArray())
+        uiScrollerJList.value.setListData(mTagList.toTypedArray())
         LogFilterStorage.clear()
 
         logRepository.removeFilters()
     }
 
     /** 文本过滤条件EditText Listener */
-    inner class MsgFilterEditListener(
-        private val textField: JTextField
-    ): DocumentListener {
+    inner class MsgFilterEditListener(private val textField: JTextField): DocumentListener {
 
-        override fun changedUpdate(e: DocumentEvent?) {
-            logRepository.addFilter(textField.text)
-        }
+        override fun changedUpdate(e: DocumentEvent?) { logRepository.addFilter(textField.text) }
 
-        override fun insertUpdate(e: DocumentEvent?) {
-            logRepository.addFilter(textField.text)
-        }
+        override fun insertUpdate(e: DocumentEvent?) { logRepository.addFilter(textField.text) }
 
-        override fun removeUpdate(e: DocumentEvent?) {
-            logRepository.addFilter(textField.text)
-        }
+        override fun removeUpdate(e: DocumentEvent?) { logRepository.addFilter(textField.text) }
     }
 
     private fun highlightMsg(highlightMsg: String) {
