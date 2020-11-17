@@ -3,6 +3,7 @@ package com.shopee.logviewer.data
 import com.shopee.logviewer.filter.IFilter
 import com.shopee.logviewer.filter.LogLevelFilter
 import com.shopee.logviewer.filter.CombineFilter
+import com.shopee.logviewer.filter.MessageFilter
 import javax.swing.SwingUtilities
 import kotlin.reflect.KClass
 
@@ -18,9 +19,7 @@ class LogRepository(
 
     /** 原始的log数据 */
     private val rawLogs: ArrayList<LogInfo> = arrayListOf()
-    /**
-     * 过滤规则组合，目前的功能中每种[IFilter]仅支持一个
-     */
+    /** 过滤规则组合，目前的功能中每种[IFilter]仅支持一个 */
     private val filters: ArrayList<IFilter> = arrayListOf()
     /** 过滤工作线程 */
     private val workThread = Thread("filter-thread")
@@ -99,6 +98,25 @@ class LogRepository(
 
         print("filter() >>> async filter with log level[${logLevel.value}]")
         val newFilter = LogLevelFilter(enumTarget = logLevel)
+        asyncFilter(filters.replaceAndCopy(newFilter), last = newFilter)
+    }
+
+    /** 文本过滤器 */
+    fun addFilter(message: String?) {
+        if (rawLogs.isEmpty()) {
+            print("addFilter() >>> empty raw")
+            return
+        }
+
+        if (!filters.has(MessageFilter::class)) {
+            print("filter() >>> async filter with message[$message]")
+            val newFilter = MessageFilter(message = message)
+            asyncFilter(filters.addAndCopy(newFilter), last = newFilter)
+            return
+        }
+
+        print("filter() >>> async filter with message[$message]")
+        val newFilter = MessageFilter(message = message)
         asyncFilter(filters.replaceAndCopy(newFilter), last = newFilter)
     }
 

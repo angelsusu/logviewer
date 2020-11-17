@@ -27,6 +27,8 @@ import java.awt.event.ItemListener
 import java.io.File
 import javax.swing.*
 import javax.swing.border.EmptyBorder
+import javax.swing.event.DocumentEvent
+import javax.swing.event.DocumentListener
 import javax.swing.event.ListSelectionListener
 import javax.swing.table.DefaultTableModel
 
@@ -117,23 +119,27 @@ class LogViewerFrame: ILogRepository {
         val jp = JPanel()
         jp.border = EmptyBorder(5, 0, 5, 5) //设置面板的边框
         jp.layout = BorderLayout(0, 0) //设置内容面板为边界布局
-        val jtf = JTextField(25)
 
-        jp.add(jtf, BorderLayout.CENTER)
-        jp.add(buildLogLevelBox(), BorderLayout.EAST)
+        jp.add(msgFilterField, BorderLayout.CENTER)
+        jp.add(logLevelBox, BorderLayout.EAST)
 
         return jp
     }
 
-    private fun buildLogLevelBox(): JComboBox<String> {
-        return JComboBox<String>().also { box ->
+    private val msgFilterField: JTextField
+        get() = JTextField(25).also { field ->
+            field.document.addDocumentListener(MsgFilterEditListener(field))
+        }
+
+    /** 日志等级过滤器 */
+    private val logLevelBox: JComboBox<String>
+        get() = JComboBox<String>().also { box ->
             Utils.LOG_STR_LEVELS.forEach { item ->
                 box.addItem(item)
             }
 
             box.addItemListener(sLogLevelSelector)
         }
-    }
 
     /**
      * 过滤器对应的布局
@@ -366,5 +372,23 @@ class LogViewerFrame: ILogRepository {
         LogFilterStorage.clear()
 
         logRepository.removeFilters()
+    }
+
+    /** 文本过滤条件EditText Listener */
+    inner class MsgFilterEditListener(
+        private val textField: JTextField
+    ): DocumentListener {
+
+        override fun changedUpdate(e: DocumentEvent?) {
+            logRepository.addFilter(textField.text)
+        }
+
+        override fun insertUpdate(e: DocumentEvent?) {
+            logRepository.addFilter(textField.text)
+        }
+
+        override fun removeUpdate(e: DocumentEvent?) {
+            logRepository.addFilter(textField.text)
+        }
     }
 }
