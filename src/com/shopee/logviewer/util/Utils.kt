@@ -1,31 +1,52 @@
 package com.shopee.logviewer.util
 
 import com.google.gson.Gson
+import com.shopee.logviewer.data.EnumLogLv
 
 /**
  * author: beitingsu
  * created on: 2020/11/12
  */
 object Utils {
-    val logLevelMap = hashMapOf(
-            "Verbose" to 2,
-            "Debug" to 3,
-            "Info" to 4,
-            "Warning" to 5,
-            "Error" to 6
+
+    private const val V = "Verbose"
+    private const val D = "Debug"
+    private const val I = "Info"
+    private const val W = "Warning"
+    private const val E = "Error"
+
+    const val DEFAULT_LOG_STR_LEVEL = V
+
+    val logLevelMap = mapOf(
+        V to EnumLogLv.V,
+        D to EnumLogLv.D,
+        I to EnumLogLv.I,
+        W to EnumLogLv.W,
+        E to EnumLogLv.E
     )
 
-    val logLevelConvertMap = hashMapOf(
-            2 to "Verbose",
-            3 to "Debug",
-            4 to "Info",
-            5 to "Warning",
-            6 to "Error"
+    val logLevelConvertMap = mapOf(
+        EnumLogLv.V to V,
+        EnumLogLv.D to D,
+        EnumLogLv.I to I,
+        EnumLogLv.W to W,
+        EnumLogLv.E to E
     )
 
-    val logLevelList = arrayListOf("Verbose", "Debug", "Info", "Warning", "Error")
+    val LOG_STR_LEVELS = arrayOf(V, D, I, W, E)
+    private val LOG_ENUM_LEVELS = arrayOf(EnumLogLv.V, EnumLogLv.D, EnumLogLv.I, EnumLogLv.W, EnumLogLv.E)
 
     val GSON = Gson()
+
+    fun String.toEnumLevel(): EnumLogLv {
+        return logLevelMap.getOrDefault(this, EnumLogLv.V)
+    }
+
+    fun Int.toEnumLevel(): EnumLogLv {
+        return LOG_ENUM_LEVELS.firstOrNull {
+            it.value == this@toEnumLevel
+        } ?: EnumLogLv.V
+    }
 }
 
 object LogEncrypt {

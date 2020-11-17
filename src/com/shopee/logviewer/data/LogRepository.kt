@@ -1,24 +1,29 @@
 package com.shopee.logviewer.data
 
-import java.util.concurrent.BlockingDeque
-import java.util.concurrent.BlockingQueue
-import java.util.concurrent.LinkedBlockingQueue
+import com.shopee.logviewer.filter.IFilter
+import com.shopee.logviewer.filter.LogLevelFilter
+import com.shopee.logviewer.filter.CombineFilter
 import javax.swing.SwingUtilities
+import kotlin.reflect.KClass
 
 /**
  * @Author junzhang
  * @Time 2020/11/16
  *
- * @param observer 所有的过滤[filter]结果通过observer统一回调
+ * @param observer 所有的过滤[addFilter]结果通过observer统一回调
  */
 class LogRepository(
-        private val observer: ILogRepository
+    private val observer: ILogRepository
 ) {
 
     /** 原始的log数据 */
     private val rawLogs: ArrayList<LogInfo> = arrayListOf()
+    /**
+     * 过滤规则组合，目前的功能中每种[IFilter]仅支持一个
+     */
+    private val filters: ArrayList<IFilter> = arrayListOf()
     /** 过滤工作线程 */
-    //private val workThread = WorkThread()
+    private val workThread = Thread("filter-thread")
 
     /** 更新元数据 */
     fun updateMeta(infoList: List<LogInfo>) {
@@ -32,69 +37,120 @@ class LogRepository(
     }
 
     /** @param filterInfo 根据[FilterInfo]过滤 */
-    fun filter(filterInfo: FilterInfo) {
-        //workThread.offer(Runnable {
-            val filterResult = rawLogs.filter { logInfo ->
-                filterInfo.matchTag(logInfo) && filterInfo.matchMsg(logInfo)
-            }
+    fun addFilter(filterInfo: FilterInfo) {
+        if (filters.has(CombineFilter::class)) {
+            print("filter() >>> already had same type of filter: TagMsgFilter")
+            return
+        }
 
-            SwingUtilities.invokeLater {
-                observer.onFilterResult(filterInfo, filterResult)
-            }
-        //})
+        val newFilter = CombineFilter(filterInfo = filterInfo)
+        asyncFilter(filters.addAndCopy(newFilter = newFilter), last = newFilter)
     }
 
-    private fun FilterInfo.matchTag(logInfo: LogInfo): Boolean {
-        if (null == this.tagList || this.tagList?.isEmpty() == true) {
-            // 没有tag过滤目标，默认符合要求
-            return true
+    /** @param logLevel 根据日志等级进行过滤 */
+    fun addFilter(logLevel: EnumLogLv) {
+        if (!filters.has(LogLevelFilter::class)) {
+            if (EnumLogLv.V.value >= logLevel.value) {
+                // 没有留存LogLevelFilter，且新Lv是Verbose，没有Add Filter的必要
+                print("filter() >>> no existing log level, and new log level is Verbose")
+                return
+            }
+
+            print("filter() >>> async filter with log level[${logLevel.value}]")
+            val newFilter = LogLevelFilter(enumTarget = logLevel)
+            asyncFilter(filters.addAndCopy(newFilter), last = newFilter)
+            return
         }
 
-        if (logInfo.tag.isBlank()) {
-            // Log.Tag empty or black，默认不符合要求
-            return false
+        val currentLogLv = (filters.firstOrNull { it::class == LogLevelFilter::class } as? LogLevelFilter)?.enumTarget
+        currentLogLv ?: run {
+            print("filter() >>> fail to get current log level")
+            return
         }
 
-        return this.tagList?.any { targetTag ->
-            targetTag.isNotBlank() && // 目标tag不为空
-                    logInfo.tag.equals(targetTag, true) // 命中tag
-        } ?: false
+        if (currentLogLv == logLevel) {
+            // 有留存LogLevelFilter，且新Lv与旧Lv一致
+            print("filter() >>> equalled log level[$currentLogLv]")
+            return
+        }
+
+        if (logLevel.value <= EnumLogLv.V.value) {
+            // Verbose其实是删除
+            val cFilters = filters.removeAndCopy(LogLevelFilter::class)
+            print("filter() >>> async filter with log level[${logLevel.value}] cFilters.size[${cFilters.size}]")
+            asyncFilter(
+                cFilters,
+                last = LogLevelFilter(enumTarget = EnumLogLv.V) // fake filter
+            )
+            return
+        }
+
+        print("filter() >>> async filter with log level[${logLevel.value}]")
+        val newFilter = LogLevelFilter(enumTarget = logLevel)
+        asyncFilter(filters.replaceAndCopy(newFilter), last = newFilter)
     }
 
-    private fun FilterInfo.matchMsg(logInfo: LogInfo): Boolean {
-        if (null == this.msg || this.msg.isBlank()) {
-            // 没有msg目标，默认符合要求
-            return true
+    /**
+     * 删除[FilterInfo]后重新发起过滤
+     * @param filterInfo 因为目前一种过滤方式仅一种Filter，暂时没有什么用处
+     */
+    fun removeFilter(filterInfo: FilterInfo) {
+        if (!filters.has(CombineFilter::class)) {
+            print("removeFilter() >>> didn't have combine filter in current filter list")
+            return
         }
 
-        if (logInfo.content.isBlank()) {
-            // Log.Content empty or black，默认不符合要求
-            return false
-        }
-
-        return logInfo.content.contains(this.msg, true) // Log.Content包含target msg信息，命中
+        print("removeFilter() >>> async filter after removing CombineFilter")
+        asyncFilter(
+            filters.removeAndCopy(CombineFilter::class),
+            last = null
+        )
     }
 
-    inner class WorkThread(
-            private val rBlockQueue: BlockingQueue<Runnable> = LinkedBlockingQueue<Runnable>()
-    ): Thread("filter-thread") {
+    private inline fun ArrayList<IFilter>.addAndCopy(newFilter: IFilter): List<IFilter> {
+        add(newFilter)
+        return toList()
+    }
 
-        fun offer(r: Runnable) {
-            while (!rBlockQueue.offer(r)) {
-                sleep(500)
+    private inline fun ArrayList<IFilter>.removeAndCopy(klz: KClass<out IFilter>): List<IFilter> {
+        removeIf {
+            it::class == klz
+        }
+
+        return toList()
+    }
+
+    private inline fun ArrayList<IFilter>.replaceAndCopy(newFilter: IFilter): List<IFilter> {
+        removeIf {
+            it::class == newFilter::class
+        }
+
+        add(newFilter)
+        return toList()
+    }
+
+    private fun List<IFilter>.has(klz: KClass<out IFilter>): Boolean = this.any {
+        it::class == klz
+    }
+
+    private fun asyncFilter(filters: List<IFilter>, last: IFilter?) = workThread.run {
+        val filterResult = rawLogs.filter { logInfo ->
+            filters.all { filter ->
+                filter.match(logInfo)
             }
         }
 
-        override fun run() {
-            while (true) {
-                rBlockQueue.take().run()
-            }
+        SwingUtilities.invokeLater {
+            observer.onFilterResult(last, filterResult)
         }
     }
 }
 
 interface ILogRepository {
 
-    fun onFilterResult(filterInfo: FilterInfo, result: List<LogInfo>?)
+    /**
+     * @param lastFilter 最近一次触发搜索的Filter。如果是删除Filter导致的搜索，返回null
+     */
+    fun onFilterResult(lastFilter: IFilter?, result: List<LogInfo>?)
 
 }
