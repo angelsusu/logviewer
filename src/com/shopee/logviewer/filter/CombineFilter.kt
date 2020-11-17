@@ -9,7 +9,7 @@ import com.shopee.logviewer.data.LogInfo
  *
  * TAG + msg复合过滤规则
  */
-class TagMsgFilter(
+class CombineFilter(
     val filterInfo: FilterInfo
 ): IFilter {
 

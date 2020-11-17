@@ -2,7 +2,7 @@ package com.shopee.logviewer.data
 
 import com.shopee.logviewer.filter.IFilter
 import com.shopee.logviewer.filter.LogLevelFilter
-import com.shopee.logviewer.filter.TagMsgFilter
+import com.shopee.logviewer.filter.CombineFilter
 import javax.swing.SwingUtilities
 import kotlin.reflect.KClass
 
@@ -10,7 +10,7 @@ import kotlin.reflect.KClass
  * @Author junzhang
  * @Time 2020/11/16
  *
- * @param observer 所有的过滤[filter]结果通过observer统一回调
+ * @param observer 所有的过滤[addFilter]结果通过observer统一回调
  */
 class LogRepository(
     private val observer: ILogRepository
@@ -37,18 +37,18 @@ class LogRepository(
     }
 
     /** @param filterInfo 根据[FilterInfo]过滤 */
-    fun filter(filterInfo: FilterInfo) {
-        if (filters.has(TagMsgFilter::class)) {
+    fun addFilter(filterInfo: FilterInfo) {
+        if (filters.has(CombineFilter::class)) {
             print("filter() >>> already had same type of filter: TagMsgFilter")
             return
         }
 
-        val newFilter = TagMsgFilter(filterInfo = filterInfo)
+        val newFilter = CombineFilter(filterInfo = filterInfo)
         asyncFilter(filters.addAndCopy(newFilter = newFilter), last = newFilter)
     }
 
     /** @param logLevel 根据日志等级进行过滤 */
-    fun filter(logLevel: EnumLogLv) {
+    fun addFilter(logLevel: EnumLogLv) {
         if (!filters.has(LogLevelFilter::class)) {
             if (EnumLogLv.V.value >= logLevel.value) {
                 // 没有留存LogLevelFilter，且新Lv是Verbose，没有Add Filter的必要
@@ -88,6 +88,23 @@ class LogRepository(
         print("filter() >>> async filter with log level[${logLevel.value}]")
         val newFilter = LogLevelFilter(enumTarget = logLevel)
         asyncFilter(filters.replaceAndCopy(newFilter), last = newFilter)
+    }
+
+    /**
+     * 删除[FilterInfo]后重新发起过滤
+     * @param filterInfo 因为目前一种过滤方式仅一种Filter，暂时没有什么用处
+     */
+    fun removeFilter(filterInfo: FilterInfo) {
+        if (!filters.has(CombineFilter::class)) {
+            print("removeFilter() >>> didn't have combine filter in current filter list")
+            return
+        }
+
+        print("removeFilter() >>> async filter after removing CombineFilter")
+        asyncFilter(
+            filters.removeAndCopy(CombineFilter::class),
+            last = null
+        )
     }
 
     private inline fun ArrayList<IFilter>.addAndCopy(newFilter: IFilter): List<IFilter> {
@@ -132,7 +149,7 @@ class LogRepository(
 interface ILogRepository {
 
     /**
-     * @param lastFilter 最近一次触发搜索的Filter，如果是删除Filter导致的搜索返回null
+     * @param lastFilter 最近一次触发搜索的Filter。如果是删除Filter导致的搜索，返回null
      */
     fun onFilterResult(lastFilter: IFilter?, result: List<LogInfo>?)
 

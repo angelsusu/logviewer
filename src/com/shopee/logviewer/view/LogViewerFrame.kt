@@ -21,6 +21,7 @@ import java.awt.dnd.DnDConstants
 import java.awt.dnd.DropTarget
 import java.awt.dnd.DropTargetAdapter
 import java.awt.dnd.DropTargetDropEvent
+import java.awt.event.ActionListener
 import java.awt.event.ItemListener
 import java.io.File
 import javax.swing.*
@@ -39,7 +40,9 @@ class LogViewerFrame: ILogRepository {
 
     private lateinit var mFrame : JFrame
 
+    /** key: [FilterInfo.name] */
     private lateinit var uiFilterList: JList<String>
+
     private val mTagList = arrayListOf<String>()
     private val mFilterMap = hashMapOf<String, FilterInfo>()
 
@@ -139,11 +142,8 @@ class LogViewerFrame: ILogRepository {
             showFilterEditDialog()
         }
 
-        delButton.addActionListener {
-            val selectItem = uiFilterList.selectedValue
-            mTagList.remove(selectItem)
-            uiFilterList.setListData(mTagList.toTypedArray())
-        }
+        // 删除按钮
+        delButton.addActionListener(sTagMsgFilterDeleteListener)
 
         //在滚动面板中显示列表
         scrollPane.setViewportView(JList<String>().also { list ->
@@ -217,7 +217,7 @@ class LogViewerFrame: ILogRepository {
                 return
             }
 
-            logRepository.filter(filter)
+            logRepository.addFilter(filter)
         }
     })
 
@@ -239,7 +239,7 @@ class LogViewerFrame: ILogRepository {
 
         val filter = getHighlightFilter() ?: return@ListSelectionListener
         print("filter:\n$filter")
-        logRepository.filter(filter)
+        logRepository.addFilter(filter)
     }
 
     /** 日志等级RadioButton */
@@ -248,8 +248,27 @@ class LogViewerFrame: ILogRepository {
         print("new select level[$selectLevel]")
 
         if (!selectLevel.isNullOrEmpty()) {
-            logRepository.filter(selectLevel.toEnumLevel())
+            logRepository.addFilter(selectLevel.toEnumLevel())
         }
+    }
+
+    /** 自定义过滤条件删除后点击事件 */
+    private val sTagMsgFilterDeleteListener = ActionListener {
+        val filterName: String = uiFilterList.selectedValue ?: return@ActionListener
+
+        print("FilterDeleteListener >>> filterName[$filterName]")
+        if (!mTagList.remove(filterName)) {
+            return@ActionListener
+        }
+
+        // 删除侧边栏UI Tag
+        uiFilterList.setListData(mTagList.toTypedArray())
+
+        val filterInfo = mFilterMap[filterName] ?: return@ActionListener
+
+        // 删除对应的FilterInfo，并重新开始过滤
+        mFilterMap.remove(filterName)
+        logRepository.removeFilter(filterInfo)
     }
 
     /** [ILogRepository] */
@@ -267,7 +286,7 @@ class LogViewerFrame: ILogRepository {
         uiFilterList.setListData(mTagList.toTypedArray())
 
         // 以最新的filter进行过滤
-        logRepository.filter(filterInfo)
+        logRepository.addFilter(filterInfo)
     }
 
     /** 统一更新Filtered Log的入口 */
