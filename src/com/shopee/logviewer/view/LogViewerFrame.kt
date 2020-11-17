@@ -3,15 +3,13 @@ package com.shopee.logviewer.view
 import com.shopee.logviewer.data.FilterInfo
 import com.shopee.logviewer.data.ILogRepository
 import com.shopee.logviewer.data.LogInfo
-import com.shopee.logviewer.filter.IFilter
 import com.shopee.logviewer.data.LogRepository
+import com.shopee.logviewer.filter.CombineFilter
+import com.shopee.logviewer.filter.IFilter
 import com.shopee.logviewer.listener.DoubleClickListener
 import com.shopee.logviewer.listener.LogMouseListener
-import com.shopee.logviewer.util.LogParserHandler
-import com.shopee.logviewer.util.ParseFinishListener
-import com.shopee.logviewer.util.Utils
-import com.shopee.logviewer.util.Utils.toEnumLevel
 import com.shopee.logviewer.util.*
+import com.shopee.logviewer.util.Utils.toEnumLevel
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
@@ -51,6 +49,7 @@ class LogViewerFrame: ILogRepository {
     private val logRepository = LogRepository(observer = this@LogViewerFrame)
 
     private lateinit var mContentTable: JTable
+    private val mTableCellRender = LogTableCellRenderer()
 
     init {
         LogFilterStorage.init()
@@ -195,6 +194,7 @@ class LogViewerFrame: ILogRepository {
         val scrollPane = JScrollPane(table) //创建滚动面板
         val tableModel = table.model as DefaultTableModel //获得表格模型
         tableModel.rowCount = 0 //清空表格中的数据
+        val columnNames = arrayOf<Any>("Time", "Level", "Tag", "Content")
         tableModel.setColumnIdentifiers(arrayOf<Any>("Time", "Level", "Tag", "Content")) //设置表头
         table.rowHeight = 30
         table.model = tableModel //应用表格模型
@@ -202,6 +202,9 @@ class LogViewerFrame: ILogRepository {
         table.gridColor = Color.lightGray
         contentPane.add(scrollPane, BorderLayout.CENTER) //将面板增加到边界布局中央
         table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION)
+        val tableColumn = table.getColumn(columnNames[columnNames.size - 1])
+        // 设置表格列的单元格渲染器
+        tableColumn.cellRenderer = mTableCellRender
         initPopupCopyMenu(table)
         mContentTable = table
         return contentPane
@@ -295,6 +298,12 @@ class LogViewerFrame: ILogRepository {
     /** [ILogRepository] */
     override fun onFilterResult(lastFilter: IFilter?, result: List<LogInfo>?) {
         refreshLogTables(logInfo = result)
+
+        //highlight 文本信息
+        val filterInfo = (lastFilter as? CombineFilter)?.filterInfo
+        if (filterInfo != null) {
+            highlightMsg(filterInfo)
+        }
     }
 
     /** 添加新的Filter */
@@ -369,5 +378,10 @@ class LogViewerFrame: ILogRepository {
         mFilterMap.clear()
         uiFilterList.setListData(mTagList.toTypedArray())
         LogFilterStorage.clear()
+    }
+
+    private fun highlightMsg(filterInfo: FilterInfo) {
+        mTableCellRender.mFilterInfo = filterInfo
+        mContentTable.revalidate()
     }
 }
