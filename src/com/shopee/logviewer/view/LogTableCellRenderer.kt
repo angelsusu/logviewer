@@ -1,6 +1,5 @@
 package com.shopee.logviewer.view
 
-import com.shopee.logviewer.data.FilterInfo
 import java.awt.Color
 import java.awt.Component
 import javax.swing.JTable

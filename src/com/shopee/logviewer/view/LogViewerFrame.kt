@@ -12,7 +12,10 @@ import com.shopee.logviewer.listener.DoubleClickListener
 import com.shopee.logviewer.listener.LogMouseListener
 import com.shopee.logviewer.util.*
 import com.shopee.logviewer.util.Utils.toEnumLevel
-import java.awt.*
+import java.awt.BorderLayout
+import java.awt.Color
+import java.awt.Component
+import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
 import java.awt.dnd.DnDConstants
@@ -197,7 +200,13 @@ class LogViewerFrame: ILogRepository {
         val contentPane = JPanel() //创建内容面板
         contentPane.border = EmptyBorder(5, 5, 5, 5) //设置面板的边框
         contentPane.layout = BorderLayout(0, 0) //设置内容面板为边界布局
-        val table = JTable()
+        val model = object : DefaultTableModel() {
+            override fun isCellEditable(row: Int, column: Int): Boolean {
+                //设置为不可编辑
+                return false
+            }
+        }
+        val table = JTable(model)
         val scrollPane = JScrollPane(table) //创建滚动面板
         val tableModel = table.model as DefaultTableModel //获得表格模型
         tableModel.rowCount = 0 //清空表格中的数据
@@ -302,7 +311,7 @@ class LogViewerFrame: ILogRepository {
         refreshLogTables(logInfo = result)
 
         //highlight 文本信息
-        val highLightMsg = when (lastFilter) {
+        val msg = when (lastFilter) {
             is CombineFilter -> {
                 lastFilter.filterInfo.msg
             }
@@ -312,10 +321,9 @@ class LogViewerFrame: ILogRepository {
             else -> {
                 ""
             }
-        }
-        if (!highLightMsg.isNullOrEmpty()) {
-            highlightMsg(highLightMsg)
-        }
+        } ?: return
+
+        highlightMsg(msg)
     }
 
     /** 添加新的Filter */
