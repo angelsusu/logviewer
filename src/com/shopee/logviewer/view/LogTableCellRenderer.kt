@@ -24,8 +24,16 @@ class LogTableCellRenderer : DefaultTableCellRenderer() {
         val def = textPane.styledDocument.addStyle(null, null)
         val normal = textPane.addStyle("normal", def)
         val style = textPane.addStyle("red", normal)
+        val selectedStyle = textPane.addStyle("white", def)
+        StyleConstants.setForeground(selectedStyle, Color.WHITE)
         StyleConstants.setForeground(style, Color.RED)
-        textPane.setParagraphAttributes(normal, true)
+        if (isSelected) {
+            textPane.background = Color(7,73,217)
+            textPane.setParagraphAttributes(selectedStyle, true)
+        } else {
+            textPane.background = Color.WHITE
+            textPane.setParagraphAttributes(normal, true)
+        }
         content?.let {
             highlightMsg(textPane, content)
         } ?: setTextNormal(textPane, content)
