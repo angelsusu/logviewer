@@ -6,6 +6,7 @@ import com.shopee.logviewer.data.LogInfo
 import com.shopee.logviewer.data.LogRepository
 import com.shopee.logviewer.filter.CombineFilter
 import com.shopee.logviewer.filter.IFilter
+import com.shopee.logviewer.filter.MessageFilter
 import com.shopee.logviewer.listener.DoubleClickListener
 import com.shopee.logviewer.listener.LogMouseListener
 import com.shopee.logviewer.util.*
@@ -301,9 +302,19 @@ class LogViewerFrame: ILogRepository {
         refreshLogTables(logInfo = result)
 
         //highlight 文本信息
-        val filterInfo = (lastFilter as? CombineFilter)?.filterInfo
-        if (filterInfo != null) {
-            highlightMsg(filterInfo)
+        val highLightMsg = when (lastFilter) {
+            is CombineFilter -> {
+                lastFilter.filterInfo.msg
+            }
+            is MessageFilter -> {
+                lastFilter.message
+            }
+            else -> {
+                ""
+            }
+        }
+        if (!highLightMsg.isNullOrEmpty()) {
+            highlightMsg(highLightMsg)
         }
     }
 
@@ -401,8 +412,8 @@ class LogViewerFrame: ILogRepository {
         }
     }
 
-    private fun highlightMsg(filterInfo: FilterInfo) {
-        mTableCellRender.mFilterInfo = filterInfo
+    private fun highlightMsg(highlightMsg: String) {
+        mTableCellRender.highlightMsg = highlightMsg
         mContentTable.revalidate()
     }
 }

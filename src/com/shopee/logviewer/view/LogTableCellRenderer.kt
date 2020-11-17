@@ -16,7 +16,7 @@ import javax.swing.text.StyleConstants
  */
 class LogTableCellRenderer : DefaultTableCellRenderer() {
 
-    var mFilterInfo: FilterInfo? = null
+    var highlightMsg = ""
 
     override fun getTableCellRendererComponent(table: JTable?, value: Any?, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int): Component {
         val content = value as? String
@@ -33,8 +33,7 @@ class LogTableCellRenderer : DefaultTableCellRenderer() {
     }
 
     private fun highlightMsg(textPane: JTextPane, content: String) {
-        val highlightMsg = mFilterInfo?.msg
-        if (highlightMsg.isNullOrEmpty()) {
+        if (highlightMsg.isEmpty()) {
             setTextNormal(textPane, content)
         } else {
             var splitText = content

@@ -7,7 +7,7 @@ import com.shopee.logviewer.data.LogInfo
  * @Time 2020/11/17
  */
 class MessageFilter(
-    private val message: String?
+    val message: String?
 ): IFilter {
 
     override fun match(logInfo: LogInfo): Boolean {
