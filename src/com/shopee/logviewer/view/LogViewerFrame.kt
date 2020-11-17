@@ -249,12 +249,7 @@ class LogViewerFrame: ILogRepository {
     }
 
     /** 左侧Filter栏点击触发器 */
-    private val sFilterSelectListener = ListSelectionListener { event ->
-        if (event.firstIndex != event.lastIndex) {
-            print("filter select index didn't support multi select:[${event.firstIndex} - ${event.lastIndex}]")
-            return@ListSelectionListener
-        }
-
+    private val sFilterSelectListener = ListSelectionListener {
         val filter = getHighlightFilter() ?: return@ListSelectionListener
         print("filter:\n$filter")
         logRepository.addFilter(filter)
@@ -285,7 +280,7 @@ class LogViewerFrame: ILogRepository {
         val filterInfo = mFilterMap[filterName] ?: return@ActionListener
 
         // 删除本地存储
-        mFilterMap[filterName]?.let { filterInfo -> LogFilterStorage.deleteFilterInfo(filterInfo) }
+        LogFilterStorage.deleteFilterInfo(filterInfo)
 
         // 删除对应的FilterInfo，并重新开始过滤
         mFilterMap.remove(filterName)
@@ -369,5 +364,7 @@ class LogViewerFrame: ILogRepository {
         mFilterMap.clear()
         uiFilterList.setListData(mTagList.toTypedArray())
         LogFilterStorage.clear()
+
+        logRepository.removeFilters()
     }
 }
