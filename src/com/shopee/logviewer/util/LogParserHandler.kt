@@ -7,7 +7,6 @@ import com.shopee.logviewer.util.Utils.toEnumLevel
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.lang.Exception
 import javax.swing.SwingUtilities
 
 /**

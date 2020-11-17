@@ -1,5 +1,6 @@
 package com.shopee.logviewer.view
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.shopee.logviewer.data.FilterInfo
 import com.shopee.logviewer.data.ILogRepository
 import com.shopee.logviewer.data.LogInfo
@@ -362,10 +363,11 @@ class LogViewerFrame: ILogRepository {
                     val rowCount = mContentTable.selectedRows
                     val listInfo = arrayListOf<LogInfo>()
                     for (index in rowCount.indices) {
-                        val time = mContentTable.getValueAt(index, 0) as String
-                        val strLevel = mContentTable.getValueAt(index, 1) as String
-                        val tag = mContentTable.getValueAt(index, 2) as String
-                        val content = mContentTable.getValueAt(index, 3) as String
+                        val row = rowCount[index]
+                        val time = mContentTable.getValueAt(row, 0) as String
+                        val strLevel = mContentTable.getValueAt(row, 1) as String
+                        val tag = mContentTable.getValueAt(row, 2) as String
+                        val content = mContentTable.getValueAt(row, 3) as String
 
                         listInfo.add(LogInfo(
                             time = time,
@@ -376,7 +378,8 @@ class LogViewerFrame: ILogRepository {
                         ))
                     }
                     val cb = Toolkit.getDefaultToolkit().systemClipboard
-                    val trans = StringSelection(Utils.GSON.toJson(listInfo))
+                    val mapper = ObjectMapper()
+                    val trans = StringSelection(mapper.writeValueAsString(listInfo))
                     cb.setContents(trans, null)
                 }
             }
