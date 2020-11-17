@@ -35,3 +35,12 @@ fun <T> File.safelyRead(block: (reader: BufferedReader) -> T): T? {
         block.invoke(reader)
     }
 }
+
+fun File.safelyWrite(block: (writer: BufferedWriter) -> Unit, isAppend: Boolean = true) {
+    safelyCreate {
+        BufferedWriter(OutputStreamWriter(FileOutputStream(this, isAppend)))
+    }?.safelyUse { writer ->
+        block.invoke(writer)
+        writer.flush()
+    }
+}

@@ -25,6 +25,7 @@ class FilterEditDialog(
         setSize(615, 500)
         isResizable = false
         setLocationRelativeTo(frame)
+        filterData?.tagList?.let { mTagList.addAll(it) }
     }
 
     fun showDialog() {
@@ -121,7 +122,7 @@ class FilterEditDialog(
         scrollPane.setViewportView(list) //在滚动面板中显示列表
         panel.add(scrollPane, BorderLayout.CENTER) //将面板增加到边界布局中央
         if (filterData?.tagList?.isNullOrEmpty() == false) {
-            list.setListData(filterData.tagList.toTypedArray())
+            list.setListData(filterData.tagList?.toTypedArray())
         }
         mFilterTagList = list
         return panel

@@ -6,9 +6,9 @@ package com.shopee.logviewer.data
  * 过滤信息
  */
 data class FilterInfo(
-        val name: String,                   /** 过滤器自定义名称 */
-        val msg: String? = "",              /** 过滤规则1: [LogInfo].msg.contains(msg)  */
-        val tagList: List<String>? = null   /** 过滤规则2: tagList.any { it == [LogInfo].tag } */
+        val name: String = "",              /** 过滤器自定义名称 */
+        var msg: String = "",              /** 过滤规则1: [LogInfo].msg.contains(msg)  */
+        var tagList: List<String>? = null   /** 过滤规则2: tagList.any { it == [LogInfo].tag } */
 ) {
         override fun toString(): String {
                 return StringBuilder()

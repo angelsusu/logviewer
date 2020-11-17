@@ -2,13 +2,11 @@ package com.shopee.logviewer.view
 
 import com.shopee.logviewer.data.FilterInfo
 import com.shopee.logviewer.data.ILogRepository
-import com.shopee.logviewer.data.LogRepository
 import com.shopee.logviewer.data.LogInfo
+import com.shopee.logviewer.data.LogRepository
 import com.shopee.logviewer.listener.DoubleClickListener
 import com.shopee.logviewer.listener.LogMouseListener
-import com.shopee.logviewer.util.LogParserHandler
-import com.shopee.logviewer.util.ParseFinishListener
-import com.shopee.logviewer.util.Utils
+import com.shopee.logviewer.util.*
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
@@ -44,6 +42,20 @@ class LogViewerFrame: ILogRepository {
     private val logRepository = LogRepository(observer = this@LogViewerFrame)
 
     private lateinit var mContentTable: JTable
+
+    init {
+        LogFilterStorage.init()
+        LogFilterStorage.addListener(object : OnFilterLoadedListener {
+            override fun onLoaded(filterInfoList: List<FilterInfo>) {
+                filterInfoList.forEach { filterInfo ->
+                    addFilterInfo(filterInfo)
+                }
+                if (::uiFilterList.isInitialized) {
+                    uiFilterList.setListData(mTagList.toTypedArray())
+                }
+            }
+        })
+    }
 
     fun showLogViewer() {
         val frame = JFrame("Android LogViewer") //创建Frame窗口
@@ -136,6 +148,8 @@ class LogViewerFrame: ILogRepository {
             val selectItem = uiFilterList.selectedValue
             mTagList.remove(selectItem)
             uiFilterList.setListData(mTagList.toTypedArray())
+            mFilterMap[selectItem]?.let { filterInfo -> LogFilterStorage.deleteFilterInfo(filterInfo) }
+            mFilterMap.remove(selectItem)
         }
 
         //在滚动面板中显示列表
@@ -155,7 +169,7 @@ class LogViewerFrame: ILogRepository {
 
             uiFilterList = list
         })
-
+        uiFilterList.setListData(mTagList.toTypedArray())
         return panel
     }
 
@@ -242,15 +256,22 @@ class LogViewerFrame: ILogRepository {
 
     /** 添加新的Filter */
     private fun onFilterAddRecv(filterInfo: FilterInfo) {
+        addFilterInfo(filterInfo)
+        uiFilterList.setListData(mTagList.toTypedArray())
+
+        // 以最新的filter进行过滤
+        logRepository.filter(filterInfo)
+
+        // 存储新的filterInfo
+        LogFilterStorage.addFilterInfo(filterInfo)
+    }
+
+    private fun addFilterInfo(filterInfo: FilterInfo) {
         if (!mFilterMap.containsKey(filterInfo.name)) {
             mTagList.add(filterInfo.name)
         }
 
         mFilterMap[filterInfo.name] = filterInfo
-        uiFilterList.setListData(mTagList.toTypedArray())
-
-        // 以最新的filter进行过滤
-        logRepository.filter(filterInfo)
     }
 
     /** 统一更新Filtered Log的入口 */

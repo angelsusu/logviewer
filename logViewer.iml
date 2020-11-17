@@ -10,5 +10,7 @@
     <orderEntry type="library" name="KotlinJavaRuntime" level="project" />
     <orderEntry type="library" name="lib" level="project" />
     <orderEntry type="library" name="com.google.code.gson:gson:2.8.6" level="application" />
+    <orderEntry type="library" name="com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.7.1" level="application" />
+    <orderEntry type="library" name="org.codehaus.jackson:jackson-mapper-asl:1.9.13" level="application" />
  </component>
 </module>

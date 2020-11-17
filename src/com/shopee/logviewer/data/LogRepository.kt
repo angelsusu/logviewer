@@ -45,7 +45,7 @@ class LogRepository(
     }
 
     private fun FilterInfo.matchTag(logInfo: LogInfo): Boolean {
-        if (null == this.tagList || this.tagList.isEmpty()) {
+        if (null == this.tagList || this.tagList?.isEmpty() == true) {
             // 没有tag过滤目标，默认符合要求
             return true
         }
@@ -55,10 +55,10 @@ class LogRepository(
             return false
         }
 
-        return this.tagList.any { targetTag ->
+        return this.tagList?.any { targetTag ->
             targetTag.isNotBlank() && // 目标tag不为空
                     logInfo.tag.equals(targetTag, true) // 命中tag
-        }
+        } ?: false
     }
 
     private fun FilterInfo.matchMsg(logInfo: LogInfo): Boolean {
