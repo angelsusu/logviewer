@@ -1,9 +1,9 @@
 package com.shopee.logviewer.data
 
-import java.util.concurrent.BlockingDeque
-import java.util.concurrent.BlockingQueue
-import java.util.concurrent.LinkedBlockingQueue
+import com.shopee.logviewer.filter.IFilter
+import com.shopee.logviewer.filter.TagMsgFilter
 import javax.swing.SwingUtilities
+import kotlin.reflect.KClass
 
 /**
  * @Author junzhang
@@ -12,13 +12,17 @@ import javax.swing.SwingUtilities
  * @param observer 所有的过滤[filter]结果通过observer统一回调
  */
 class LogRepository(
-        private val observer: ILogRepository
+    private val observer: ILogRepository
 ) {
 
     /** 原始的log数据 */
     private val rawLogs: ArrayList<LogInfo> = arrayListOf()
+    /**
+     * 过滤规则组合，目前的功能中每种[IFilter]仅支持一个
+     */
+    private val filters: ArrayList<IFilter> = arrayListOf()
     /** 过滤工作线程 */
-    //private val workThread = WorkThread()
+    private val workThread = Thread("filter-thread")
 
     /** 更新元数据 */
     fun updateMeta(infoList: List<LogInfo>) {
@@ -33,63 +37,31 @@ class LogRepository(
 
     /** @param filterInfo 根据[FilterInfo]过滤 */
     fun filter(filterInfo: FilterInfo) {
-        //workThread.offer(Runnable {
+        if (filters.has(TagMsgFilter::class)) {
+            print("filter() >>> already had same type of filter: TagMsgFilter")
+            return
+        }
+
+        val cFilters = filters.let {
+            it.add(TagMsgFilter(filterInfo = filterInfo))
+            it.toList()
+        }
+
+        workThread.run {
             val filterResult = rawLogs.filter { logInfo ->
-                filterInfo.matchTag(logInfo) && filterInfo.matchMsg(logInfo)
+                cFilters.all { filter ->
+                    filter.match(logInfo)
+                }
             }
 
             SwingUtilities.invokeLater {
                 observer.onFilterResult(filterInfo, filterResult)
             }
-        //})
-    }
-
-    private fun FilterInfo.matchTag(logInfo: LogInfo): Boolean {
-        if (null == this.tagList || this.tagList.isEmpty()) {
-            // 没有tag过滤目标，默认符合要求
-            return true
-        }
-
-        if (logInfo.tag.isBlank()) {
-            // Log.Tag empty or black，默认不符合要求
-            return false
-        }
-
-        return this.tagList.any { targetTag ->
-            targetTag.isNotBlank() && // 目标tag不为空
-                    logInfo.tag.equals(targetTag, true) // 命中tag
         }
     }
 
-    private fun FilterInfo.matchMsg(logInfo: LogInfo): Boolean {
-        if (null == this.msg || this.msg.isBlank()) {
-            // 没有msg目标，默认符合要求
-            return true
-        }
-
-        if (logInfo.content.isBlank()) {
-            // Log.Content empty or black，默认不符合要求
-            return false
-        }
-
-        return logInfo.content.contains(this.msg, true) // Log.Content包含target msg信息，命中
-    }
-
-    inner class WorkThread(
-            private val rBlockQueue: BlockingQueue<Runnable> = LinkedBlockingQueue<Runnable>()
-    ): Thread("filter-thread") {
-
-        fun offer(r: Runnable) {
-            while (!rBlockQueue.offer(r)) {
-                sleep(500)
-            }
-        }
-
-        override fun run() {
-            while (true) {
-                rBlockQueue.take().run()
-            }
-        }
+    private fun List<IFilter>.has(klz: KClass<out IFilter>): Boolean = this.any {
+        it::class == klz
     }
 }
 

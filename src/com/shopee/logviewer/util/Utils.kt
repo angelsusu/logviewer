@@ -8,19 +8,19 @@ import com.google.gson.Gson
  */
 object Utils {
     val logLevelMap = hashMapOf(
-            "Verbose" to 2,
-            "Debug" to 3,
-            "Info" to 4,
-            "Warning" to 5,
-            "Error" to 6
+        "Verbose" to 2,
+        "Debug" to 3,
+        "Info" to 4,
+        "Warning" to 5,
+        "Error" to 6
     )
 
     val logLevelConvertMap = hashMapOf(
-            2 to "Verbose",
-            3 to "Debug",
-            4 to "Info",
-            5 to "Warning",
-            6 to "Error"
+        2 to "Verbose",
+        3 to "Debug",
+        4 to "Info",
+        5 to "Warning",
+        6 to "Error"
     )
 
     val logLevelList = arrayListOf("Verbose", "Debug", "Info", "Warning", "Error")
