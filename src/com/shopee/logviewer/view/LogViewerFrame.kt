@@ -4,11 +4,13 @@ import com.shopee.logviewer.data.FilterInfo
 import com.shopee.logviewer.data.ILogRepository
 import com.shopee.logviewer.data.LogRepository
 import com.shopee.logviewer.data.LogInfo
+import com.shopee.logviewer.filter.IFilter
 import com.shopee.logviewer.listener.DoubleClickListener
 import com.shopee.logviewer.listener.LogMouseListener
 import com.shopee.logviewer.util.LogParserHandler
 import com.shopee.logviewer.util.ParseFinishListener
 import com.shopee.logviewer.util.Utils
+import com.shopee.logviewer.util.Utils.toEnumLevel
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
@@ -19,6 +21,7 @@ import java.awt.dnd.DnDConstants
 import java.awt.dnd.DropTarget
 import java.awt.dnd.DropTargetAdapter
 import java.awt.dnd.DropTargetDropEvent
+import java.awt.event.ItemListener
 import java.io.File
 import javax.swing.*
 import javax.swing.border.EmptyBorder
@@ -97,17 +100,21 @@ class LogViewerFrame: ILogRepository {
         jp.border = EmptyBorder(5, 0, 5, 5) //设置面板的边框
         jp.layout = BorderLayout(0, 0) //设置内容面板为边界布局
         val jtf = JTextField(25)
-        val cmb = JComboBox<String>()
-        Utils.logLevelList.forEach { item ->
-            cmb.addItem(item)
-        }
-        cmb.addItemListener {
-            val text = cmb.selectedItem
-            println(text)
-        }
+
         jp.add(jtf, BorderLayout.CENTER)
-        jp.add(cmb, BorderLayout.EAST)
+        jp.add(buildLogLevelBox(), BorderLayout.EAST)
+
         return jp
+    }
+
+    private fun buildLogLevelBox(): JComboBox<String> {
+        return JComboBox<String>().also { box ->
+            Utils.LOG_STR_LEVELS.forEach { item ->
+                box.addItem(item)
+            }
+
+            box.addItemListener(sLogLevelSelector)
+        }
     }
 
     /**
@@ -235,8 +242,18 @@ class LogViewerFrame: ILogRepository {
         logRepository.filter(filter)
     }
 
+    /** 日志等级RadioButton */
+    private val sLogLevelSelector = ItemListener { event ->
+        val selectLevel = event.item as? String
+        print("new select level[$selectLevel]")
+
+        if (!selectLevel.isNullOrEmpty()) {
+            logRepository.filter(selectLevel.toEnumLevel())
+        }
+    }
+
     /** [ILogRepository] */
-    override fun onFilterResult(filterInfo: FilterInfo, result: List<LogInfo>?) {
+    override fun onFilterResult(lastFilter: IFilter?, result: List<LogInfo>?) {
         refreshLogTables(logInfo = result)
     }
 
@@ -261,7 +278,7 @@ class LogViewerFrame: ILogRepository {
         logInfo ?: return
 
         logInfo.forEach { info ->
-            tableModel.addRow(arrayOf<Any>(info.time, info.level, info.tag, info.content))
+            tableModel.addRow(arrayOf<Any>(info.time, info.strLevel, info.tag, info.content))
         }
     }
 
@@ -274,11 +291,17 @@ class LogViewerFrame: ILogRepository {
                     val listInfo = arrayListOf<LogInfo>()
                     for (index in rowCount.indices) {
                         val time = mContentTable.getValueAt(index, 0) as String
-                        val level = mContentTable.getValueAt(index, 1) as String
+                        val strLevel = mContentTable.getValueAt(index, 1) as String
                         val tag = mContentTable.getValueAt(index, 2) as String
                         val content = mContentTable.getValueAt(index, 3) as String
-                        val logInfo = LogInfo(time, tag, level, content)
-                        listInfo.add(logInfo)
+
+                        listInfo.add(LogInfo(
+                            time = time,
+                            tag = tag,
+                            enumLevel = strLevel.toEnumLevel(),
+                            strLevel = strLevel,
+                            content = content
+                        ))
                     }
                     val cb = Toolkit.getDefaultToolkit().systemClipboard
                     val trans = StringSelection(Utils.GSON.toJson(listInfo))

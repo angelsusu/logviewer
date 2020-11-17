@@ -1,6 +1,7 @@
 package com.shopee.logviewer.data
 
 import com.shopee.logviewer.filter.IFilter
+import com.shopee.logviewer.filter.LogLevelFilter
 import com.shopee.logviewer.filter.TagMsgFilter
 import javax.swing.SwingUtilities
 import kotlin.reflect.KClass
@@ -42,31 +43,97 @@ class LogRepository(
             return
         }
 
-        val cFilters = filters.let {
-            it.add(TagMsgFilter(filterInfo = filterInfo))
-            it.toList()
-        }
+        val newFilter = TagMsgFilter(filterInfo = filterInfo)
+        asyncFilter(filters.addAndCopy(newFilter = newFilter), last = newFilter)
+    }
 
-        workThread.run {
-            val filterResult = rawLogs.filter { logInfo ->
-                cFilters.all { filter ->
-                    filter.match(logInfo)
-                }
+    /** @param logLevel 根据日志等级进行过滤 */
+    fun filter(logLevel: EnumLogLv) {
+        if (!filters.has(LogLevelFilter::class)) {
+            if (EnumLogLv.V.value >= logLevel.value) {
+                // 没有留存LogLevelFilter，且新Lv是Verbose，没有Add Filter的必要
+                print("filter() >>> no existing log level, and new log level is Verbose")
+                return
             }
 
-            SwingUtilities.invokeLater {
-                observer.onFilterResult(filterInfo, filterResult)
-            }
+            print("filter() >>> async filter with log level[${logLevel.value}]")
+            val newFilter = LogLevelFilter(enumTarget = logLevel)
+            asyncFilter(filters.addAndCopy(newFilter), last = newFilter)
+            return
         }
+
+        val currentLogLv = (filters.firstOrNull { it::class == LogLevelFilter::class } as? LogLevelFilter)?.enumTarget
+        currentLogLv ?: run {
+            print("filter() >>> fail to get current log level")
+            return
+        }
+
+        if (currentLogLv == logLevel) {
+            // 有留存LogLevelFilter，且新Lv与旧Lv一致
+            print("filter() >>> equalled log level[$currentLogLv]")
+            return
+        }
+
+        if (logLevel.value <= EnumLogLv.V.value) {
+            // Verbose其实是删除
+            val cFilters = filters.removeAndCopy(LogLevelFilter::class)
+            print("filter() >>> async filter with log level[${logLevel.value}] cFilters.size[${cFilters.size}]")
+            asyncFilter(
+                cFilters,
+                last = LogLevelFilter(enumTarget = EnumLogLv.V) // fake filter
+            )
+            return
+        }
+
+        print("filter() >>> async filter with log level[${logLevel.value}]")
+        val newFilter = LogLevelFilter(enumTarget = logLevel)
+        asyncFilter(filters.replaceAndCopy(newFilter), last = newFilter)
+    }
+
+    private inline fun ArrayList<IFilter>.addAndCopy(newFilter: IFilter): List<IFilter> {
+        add(newFilter)
+        return toList()
+    }
+
+    private inline fun ArrayList<IFilter>.removeAndCopy(klz: KClass<out IFilter>): List<IFilter> {
+        removeIf {
+            it::class == klz
+        }
+
+        return toList()
+    }
+
+    private inline fun ArrayList<IFilter>.replaceAndCopy(newFilter: IFilter): List<IFilter> {
+        removeIf {
+            it::class == newFilter::class
+        }
+
+        add(newFilter)
+        return toList()
     }
 
     private fun List<IFilter>.has(klz: KClass<out IFilter>): Boolean = this.any {
         it::class == klz
     }
+
+    private fun asyncFilter(filters: List<IFilter>, last: IFilter?) = workThread.run {
+        val filterResult = rawLogs.filter { logInfo ->
+            filters.all { filter ->
+                filter.match(logInfo)
+            }
+        }
+
+        SwingUtilities.invokeLater {
+            observer.onFilterResult(last, filterResult)
+        }
+    }
 }
 
 interface ILogRepository {
 
-    fun onFilterResult(filterInfo: FilterInfo, result: List<LogInfo>?)
+    /**
+     * @param lastFilter 最近一次触发搜索的Filter，如果是删除Filter导致的搜索返回null
+     */
+    fun onFilterResult(lastFilter: IFilter?, result: List<LogInfo>?)
 
 }

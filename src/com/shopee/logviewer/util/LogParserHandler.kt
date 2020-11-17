@@ -3,6 +3,7 @@ package com.shopee.logviewer.util
 import com.shopee.logviewer.data.LogInfo
 import com.shopee.logviewer.data.ParseLogInfo
 import com.shopee.logviewer.util.Utils.GSON
+import com.shopee.logviewer.util.Utils.toEnumLevel
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -58,6 +59,7 @@ class LogParserHandler(private val mListener: ParseFinishListener? = null) {
         } catch (except: Exception) {
             null
         }
+
         return parseLogInfo?.let { parseLogInfo ->
             if (!parseLogInfo.content.contains("LoganService")) {
                 return null
@@ -67,8 +69,9 @@ class LogParserHandler(private val mListener: ParseFinishListener? = null) {
             val index = parseLogInfo.content.indexOf(" ")
             val tag = parseLogInfo.content.substring(14, index - 1) //不包含"|LoganService|"
             val content = parseLogInfo.content.substring(index + 1)
-            val level = Utils.logLevelConvertMap[parseLogInfo.level] ?: "Debug"
-            LogInfo(time, tag, level, content)
+            val enumLevel = parseLogInfo.level.toEnumLevel()
+            val strLevel = Utils.logLevelConvertMap.getOrDefault(enumLevel, Utils.DEFAULT_LOG_STR_LEVEL)
+            LogInfo(time = time, tag = tag, strLevel = strLevel, enumLevel = enumLevel, content = content)
         }
     }
 }
