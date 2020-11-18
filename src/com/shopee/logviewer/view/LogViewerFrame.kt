@@ -86,7 +86,7 @@ class LogViewerFrame: ILogRepository {
             override fun onLoaded(filterInfoList: List<FilterInfo>) {
                 print("LogFilterStorage.init callback with filterInfoList[${filterInfoList.size}]")
 
-                mTagList.add(NO_FILTER_NAME)
+                mTagList.add(0, NO_FILTER_NAME)
 
                 filterInfoList.forEach { filterInfo ->
                     addFilterInfo(filterInfo)
@@ -98,7 +98,7 @@ class LogViewerFrame: ILogRepository {
             // @UiThread
             override fun onFailure(e: Throwable?) {
                 print("LogFilterStorage.init callback with Throwable:$e")
-                mTagList.add(NO_FILTER_NAME)
+                mTagList.add(0, NO_FILTER_NAME)
                 uiScrollerJList.setListData(mTagList.toTypedArray())
             }
         })
@@ -204,14 +204,6 @@ class LogViewerFrame: ILogRepository {
         get() = JScrollPane().also { scrollPane ->
             scrollPane.setViewportView(uiScrollerJList) //在滚动面板中显示列表
             uiScrollerJList.addKeyListener(LogKeyListener(mOnKeyClickListener))
-            uiScrollerJList.addListSelectionListener {
-                val filterInfo = getHighlightFilter()
-                filterInfo ?: run {
-                    refreshLogTables(logRepository.getRawLogs())
-                    return@addListSelectionListener
-                }
-                logRepository.addFilter(filterInfo)
-            }
         }
 
     /** 左上角Filter操作区域 */
@@ -305,9 +297,14 @@ class LogViewerFrame: ILogRepository {
 
     /** 左侧Filter栏点击触发器 */
     private val sFilterSelectListener = ListSelectionListener {
-        val filter = getHighlightFilter() ?: return@ListSelectionListener
-        print("filter:\n$filter")
-        logRepository.addFilter(filter)
+        val filterInfo = getHighlightFilter()
+        filterInfo ?: run {
+            refreshLogTables(logRepository.getRawLogs())
+            return@ListSelectionListener
+        }
+
+        print("filter:\n$filterInfo")
+        logRepository.addFilter(filterInfo)
     }
 
     /** 日志等级RadioButton */
