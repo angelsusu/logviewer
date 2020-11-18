@@ -79,6 +79,7 @@ class LogViewerFrame: ILogRepository {
 
     fun showLogViewer() {
         supportFileDrag(uiFrame)
+        AlertDialog.sFrame = uiFrame
 
         // restore latest filter tag
         LogFilterStorage.init(listener = object : OnFilterLoadedListener {
@@ -100,6 +101,8 @@ class LogViewerFrame: ILogRepository {
                 print("LogFilterStorage.init callback with Throwable:$e")
                 mTagList.add(0, NO_FILTER_NAME)
                 uiScrollerJList.setListData(mTagList.toTypedArray())
+
+                AlertDialog.showAlert("Fail to restore Filter tags!")
             }
         })
         uiFrame.addKeyListener(LogKeyListener(mOnKeyClickListener))
