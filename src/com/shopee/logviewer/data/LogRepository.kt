@@ -35,6 +35,8 @@ class LogRepository(
         rawLogs.addAll(infoList)
     }
 
+    fun getRawOrNull(index: Int) = rawLogs.getOrNull(index)
+
     /** @param filterInfo 根据[FilterInfo]过滤 */
     fun addFilter(filterInfo: FilterInfo) {
         if (rawLogs.isEmpty()) {

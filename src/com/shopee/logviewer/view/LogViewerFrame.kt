@@ -23,6 +23,8 @@ import java.awt.dnd.DropTargetAdapter
 import java.awt.dnd.DropTargetDropEvent
 import java.awt.event.ActionListener
 import java.awt.event.ItemListener
+import java.awt.event.MouseEvent
+import java.awt.event.MouseListener
 import java.io.File
 import javax.swing.*
 import javax.swing.border.EmptyBorder
@@ -254,6 +256,7 @@ class LogViewerFrame: ILogRepository {
         }
         initPopupCopyMenu(table)
         table.addKeyListener(LogKeyListener(mOnKeyClickListener))
+        table.addMouseListener(LogTableMouseListener(jTable = table))
         mContentTable = table
         return contentPane
     }
@@ -346,6 +349,34 @@ class LogViewerFrame: ILogRepository {
         // 删除对应的FilterInfo，并重新开始过滤
         mFilterMap.remove(filterName)
         logRepository.removeFilter(filterInfo)
+    }
+
+    inner class LogTableMouseListener(
+        private val jTable: JTable
+    ) : MouseListener {
+
+        override fun mousePressed(evt: MouseEvent?) {
+            evt ?: return
+
+            if (2 == evt.clickCount) {
+                val rowIndex = jTable.rowAtPoint(evt.point)
+                val logInfo = logRepository.getRawOrNull(rowIndex)
+
+                if (-1 != rowIndex && null != logInfo) {
+                    LogDetailDialog.showLogDetail(frame = uiFrame, logInfo = logInfo)
+                } else {
+                    print("invalid index[$rowIndex] or logInfo.isNull[${null == logInfo}]")
+                }
+            }
+        }
+
+        override fun mouseReleased(e: MouseEvent?) {}
+
+        override fun mouseEntered(e: MouseEvent?) {}
+
+        override fun mouseClicked(e: MouseEvent?) {}
+
+        override fun mouseExited(e: MouseEvent?) {}
     }
 
     /** [ILogRepository] */

@@ -27,6 +27,8 @@ class LogKeyListener(private val keyClickListener: OnKeyClickListener? = null) :
     override fun keyReleased(e: KeyEvent?) {
 
     }
+
+
 }
 
 interface OnKeyClickListener {
