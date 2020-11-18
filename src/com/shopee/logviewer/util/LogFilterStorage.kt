@@ -8,6 +8,7 @@ import com.shopee.logviewer.data.FilterInfo
 import java.io.File
 import java.io.FileInputStream
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors.newCachedThreadPool
 import javax.swing.SwingUtilities
 
@@ -23,7 +24,7 @@ object LogFilterStorage {
     private val DIR_NAME = "$HOME_PATH/FoodyLogViewer"
     private const val FILE_NAME = "/filterInfo.xml"
 
-    private var mFilterInfoList = ConcurrentLinkedQueue<FilterInfo>()
+    private var mFilterInfoList = CopyOnWriteArrayList<FilterInfo>()
     private val mThreadPool = newCachedThreadPool()
 
     fun init(listener: OnFilterLoadedListener?) {
@@ -84,7 +85,7 @@ object LogFilterStorage {
         mFilterInfoList.find { it.name == filterInfo.name }?.let {
             it.msg = filterInfo.msg
             it.tagList = filterInfo.tagList
-        } ?: mFilterInfoList.add(filterInfo)
+        } ?: mFilterInfoList.add(0, filterInfo)
         parseJsonToXml()
     }
 

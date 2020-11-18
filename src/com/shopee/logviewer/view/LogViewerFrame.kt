@@ -38,6 +38,10 @@ import javax.swing.table.DefaultTableModel
  */
 class LogViewerFrame: ILogRepository {
 
+    companion object {
+        private const val NO_FILTER_NAME = "All Msg No Filter"
+    }
+
     private val uiFrame by fastLazy {
         buildFrame()
     }
@@ -82,6 +86,8 @@ class LogViewerFrame: ILogRepository {
             override fun onLoaded(filterInfoList: List<FilterInfo>) {
                 print("LogFilterStorage.init callback with filterInfoList[${filterInfoList.size}]")
 
+                mTagList.add(NO_FILTER_NAME)
+
                 filterInfoList.forEach { filterInfo ->
                     addFilterInfo(filterInfo)
                 }
@@ -92,6 +98,8 @@ class LogViewerFrame: ILogRepository {
             // @UiThread
             override fun onFailure(e: Throwable?) {
                 print("LogFilterStorage.init callback with Throwable:$e")
+                mTagList.add(NO_FILTER_NAME)
+                uiScrollerJList.setListData(mTagList.toTypedArray())
             }
         })
         uiFrame.addKeyListener(LogKeyListener(mOnKeyClickListener))
@@ -196,6 +204,14 @@ class LogViewerFrame: ILogRepository {
         get() = JScrollPane().also { scrollPane ->
             scrollPane.setViewportView(uiScrollerJList) //在滚动面板中显示列表
             uiScrollerJList.addKeyListener(LogKeyListener(mOnKeyClickListener))
+            uiScrollerJList.addListSelectionListener {
+                val filterInfo = getHighlightFilter()
+                filterInfo ?: run {
+                    refreshLogTables(logRepository.getRawLogs())
+                    return@addListSelectionListener
+                }
+                logRepository.addFilter(filterInfo)
+            }
         }
 
     /** 左上角Filter操作区域 */
@@ -258,7 +274,7 @@ class LogViewerFrame: ILogRepository {
     private fun getHighlightFilter(): FilterInfo? {
         val filterName = uiScrollerJList.selectedValue ?: return null
 
-        if (filterName.isBlank()) return null
+        if (filterName.isBlank() || filterName == NO_FILTER_NAME) return null
 
         return mFilterMap[filterName]
     }
@@ -308,6 +324,10 @@ class LogViewerFrame: ILogRepository {
     private val sTagMsgFilterDeleteListener = ActionListener {
         val filterName: String = uiScrollerJList.selectedValue ?: return@ActionListener
 
+        if (filterName == NO_FILTER_NAME) {
+            return@ActionListener
+        }
+
         print("FilterDeleteListener >>> filterName[$filterName]")
         if (!mTagList.remove(filterName)) {
             return@ActionListener
@@ -344,6 +364,7 @@ class LogViewerFrame: ILogRepository {
     private fun onFilterAddRecv(filterInfo: FilterInfo) {
         addFilterInfo(filterInfo)
         uiScrollerJList.setListData(mTagList.toTypedArray())
+        uiScrollerJList.selectedIndex = 1
 
         // 以最新的filter进行过滤
         logRepository.addFilter(filterInfo)
@@ -354,7 +375,8 @@ class LogViewerFrame: ILogRepository {
 
     private fun addFilterInfo(filterInfo: FilterInfo) {
         if (!mFilterMap.containsKey(filterInfo.name)) {
-            mTagList.add(filterInfo.name)
+            //首位为no filter
+            mTagList.add(1, filterInfo.name)
         }
 
         mFilterMap[filterInfo.name] = filterInfo
@@ -412,6 +434,7 @@ class LogViewerFrame: ILogRepository {
     /** 自定义过滤条件清除后点击事件 */
     private val sTagMsgFilterClearListener = ActionListener {
         mTagList.clear()
+        mTagList.add(NO_FILTER_NAME)
         mFilterMap.clear()
         uiScrollerJList.setListData(mTagList.toTypedArray())
         LogFilterStorage.clear()

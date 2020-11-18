@@ -204,6 +204,13 @@ class LogRepository(
             observer.onFilterResult(last, filterResult)
         }
     }
+
+    /**
+     * 返回原始数据
+     */
+    fun getRawLogs(): ArrayList<LogInfo> {
+        return rawLogs
+    }
 }
 
 interface ILogRepository {
