@@ -12,7 +12,7 @@ data class FilterInfo(
     /** 过滤规则1: [LogInfo].msg.contains(msg)  */
     var tagList: List<String>? = null,
     /** 过滤规则2: tagList.any { it == [LogInfo].tag } */
-    val isRegex: Boolean
+    val isRegex: Boolean = false
 ) {
 
     override fun toString(): String {

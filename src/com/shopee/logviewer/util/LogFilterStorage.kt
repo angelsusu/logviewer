@@ -26,11 +26,9 @@ object LogFilterStorage {
     private var mFilterInfoList = ConcurrentLinkedQueue<FilterInfo>()
     private val mThreadPool = newCachedThreadPool()
 
-    private val mListeners = ConcurrentLinkedQueue<OnFilterLoadedListener>()
-
-    fun init() {
+    fun init(listener: OnFilterLoadedListener?) {
         mFilterInfoList.clear()
-        parseXmlToJson()
+        parseXmlToJson(listener)
     }
 
     private fun parseJsonToXml() {
@@ -52,33 +50,34 @@ object LogFilterStorage {
         }
     }
 
-    private fun parseXmlToJson() {
-        mThreadPool.execute {
-            val file = File(DIR_NAME + FILE_NAME)
-            safelyCreate { FileInputStream(file) }?.safelyUse { input ->
+    private fun parseXmlToJson(listener: OnFilterLoadedListener?) = mThreadPool.execute {
+        val file = File(DIR_NAME + FILE_NAME)
+
+        val fisResult = runCatching {
+            FileInputStream(file)
+        }
+
+        val fis = fisResult.getOrNull()
+
+        if (fisResult.isFailure || null == fis) {
+            SwingUtilities.invokeLater { listener?.onFailure(fisResult.exceptionOrNull()) }
+            return@execute
+        }
+
+        val parseResult = runCatching {
+            fis.use { input ->
                 val mapper = XmlMapper()
                 mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
                 val listInfo = mapper.readValue<List<FilterInfo>>(input, object : TypeReference<List<FilterInfo>>() {})
                 mFilterInfoList.addAll(listInfo)
-                notifyListeners()
             }
         }
-    }
 
-    private fun notifyListeners() {
-        SwingUtilities.invokeLater {
-            mListeners.forEach { listener ->
-                listener.onLoaded(mFilterInfoList.toList())
-            }
+        if (parseResult.isSuccess) {
+            SwingUtilities.invokeLater { listener?.onLoaded(mFilterInfoList.toList()) }
+        } else {
+            SwingUtilities.invokeLater { listener?.onFailure(parseResult.exceptionOrNull()) }
         }
-    }
-
-    fun addListener(listener: OnFilterLoadedListener) {
-        mListeners.add(listener)
-    }
-
-    fun removeListener(listener: OnFilterLoadedListener) {
-        mListeners.remove(listener)
     }
 
     fun addFilterInfo(filterInfo: FilterInfo) {
@@ -104,5 +103,9 @@ object LogFilterStorage {
 }
 
 interface OnFilterLoadedListener {
+
     fun onLoaded(filterInfoList: List<FilterInfo>)
+
+    fun onFailure(e: Throwable?)
+
 }

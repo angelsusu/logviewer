@@ -41,7 +41,7 @@ class LogViewerFrame: ILogRepository {
     }
 
     /** key: [FilterInfo.name] */
-    private val uiScrollerJList = fastLazy {
+    private val uiScrollerJList by fastLazy {
         buildFilterScrollerJList()
     }
 
@@ -56,21 +56,27 @@ class LogViewerFrame: ILogRepository {
     private lateinit var mContentTable: JTable
     private val mTableCellRender = LogTableCellRenderer()
 
-    init {
-        LogFilterStorage.init()
-        LogFilterStorage.addListener(object : OnFilterLoadedListener {
+    fun showLogViewer() {
+        supportFileDrag(uiFrame.value)
+
+        // restore latest filter tag
+        LogFilterStorage.init(listener = object : OnFilterLoadedListener {
+            // @UiThread
             override fun onLoaded(filterInfoList: List<FilterInfo>) {
+                print("LogFilterStorage.init callback with filterInfoList[${filterInfoList.size}]")
+
                 filterInfoList.forEach { filterInfo ->
                     addFilterInfo(filterInfo)
                 }
 
-                uiScrollerJList.value.setListData(mTagList.toTypedArray())
+                uiScrollerJList.setListData(mTagList.toTypedArray())
+            }
+
+            // @UiThread
+            override fun onFailure(e: Throwable?) {
+                print("LogFilterStorage.init callback with Throwable:$e")
             }
         })
-    }
-
-    fun showLogViewer() {
-        supportFileDrag(uiFrame.value)
     }
 
     private fun buildFrame(): JFrame = JFrame("Android LogViewer").also { frame ->
@@ -169,7 +175,7 @@ class LogViewerFrame: ILogRepository {
     /** 左侧Filter Scroller列表 */
     private val filterTagScroller: JScrollPane
         get() = JScrollPane().also { scrollPane ->
-            scrollPane.setViewportView(uiScrollerJList.value) //在滚动面板中显示列表
+            scrollPane.setViewportView(uiScrollerJList) //在滚动面板中显示列表
         }
 
     /** 左上角Filter操作区域 */
@@ -229,7 +235,7 @@ class LogViewerFrame: ILogRepository {
 
     /** 获取当前highlight的[FilterInfo] */
     private fun getHighlightFilter(): FilterInfo? {
-        val filterName = uiScrollerJList.value.selectedValue ?: return null
+        val filterName = uiScrollerJList.selectedValue ?: return null
 
         if (filterName.isBlank()) return null
 
@@ -279,7 +285,7 @@ class LogViewerFrame: ILogRepository {
 
     /** 自定义过滤条件删除后点击事件 */
     private val sTagMsgFilterDeleteListener = ActionListener {
-        val filterName: String = uiScrollerJList.value.selectedValue ?: return@ActionListener
+        val filterName: String = uiScrollerJList.selectedValue ?: return@ActionListener
 
         print("FilterDeleteListener >>> filterName[$filterName]")
         if (!mTagList.remove(filterName)) {
@@ -287,7 +293,7 @@ class LogViewerFrame: ILogRepository {
         }
 
         // 删除侧边栏UI Tag
-        uiScrollerJList.value.setListData(mTagList.toTypedArray())
+        uiScrollerJList.setListData(mTagList.toTypedArray())
 
         val filterInfo = mFilterMap[filterName] ?: return@ActionListener
 
@@ -316,7 +322,7 @@ class LogViewerFrame: ILogRepository {
     /** 添加新的Filter */
     private fun onFilterAddRecv(filterInfo: FilterInfo) {
         addFilterInfo(filterInfo)
-        uiScrollerJList.value.setListData(mTagList.toTypedArray())
+        uiScrollerJList.setListData(mTagList.toTypedArray())
 
         // 以最新的filter进行过滤
         logRepository.addFilter(filterInfo)
@@ -385,7 +391,7 @@ class LogViewerFrame: ILogRepository {
     private val sTagMsgFilterClearListener = ActionListener {
         mTagList.clear()
         mFilterMap.clear()
-        uiScrollerJList.value.setListData(mTagList.toTypedArray())
+        uiScrollerJList.setListData(mTagList.toTypedArray())
         LogFilterStorage.clear()
 
         logRepository.removeFilters()
