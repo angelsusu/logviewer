@@ -35,7 +35,8 @@ class CombineFilter(
     }
 
     private fun matchMsg(logInfo: LogInfo): Boolean {
-        if (null == filterInfo.msg || filterInfo.msg.isNullOrBlank()) {
+        val msg = filterInfo.msg
+        if (null == msg || msg.isNullOrBlank()) {
             // 没有msg目标，默认符合要求
             return true
         }
@@ -45,7 +46,11 @@ class CombineFilter(
             return false
         }
 
-        return logInfo.content.contains(filterInfo.msg!!, true) // Log.Content包含target msg信息，命中
+        return if (filterInfo.isRegex) {
+            msg.toRegex().containsMatchIn(logInfo.content)
+        } else {
+            logInfo.content.contains(msg, true) // Log.Content包含target msg信息，命中
+        }
     }
 
 }

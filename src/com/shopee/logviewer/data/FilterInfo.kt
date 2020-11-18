@@ -10,8 +10,9 @@ data class FilterInfo(
     /** 过滤器自定义名称 */
     var msg: String? = "",
     /** 过滤规则1: [LogInfo].msg.contains(msg)  */
-    var tagList: List<String>? = null
+    var tagList: List<String>? = null,
     /** 过滤规则2: tagList.any { it == [LogInfo].tag } */
+    val isRegex: Boolean
 ) {
 
     override fun toString(): String {
@@ -23,6 +24,7 @@ data class FilterInfo(
                     sb.append("tag[").append(index).append("]").append(tag).append("\n")
                 }
             }
+            .append("isRegex:").append(isRegex).append("\n")
             .toString()
     }
 }

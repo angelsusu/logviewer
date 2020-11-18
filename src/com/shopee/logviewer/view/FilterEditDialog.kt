@@ -18,7 +18,9 @@ class FilterEditDialog(
 
     private lateinit var mFilterNameText: JTextField
     private lateinit var mFilterMsgText: JTextField
+    private lateinit var mFilterRegexCB: JCheckBox
     private lateinit var mFilterTagList: JList<String>
+
     private val mTagList = arrayListOf<String>()
 
     init {
@@ -68,9 +70,14 @@ class FilterEditDialog(
         panel.layout = BorderLayout(0, 0) //设置内容面板为边界布局
         val filterLabel = JLabel("Filter Message")
         filterLabel.border = EmptyBorder(5, 5, 5, 5)
+
         val jtf = JTextField(25)
         panel.add(filterLabel, BorderLayout.WEST)
         panel.add(jtf, BorderLayout.CENTER)
+        panel.add(JCheckBox("Regex").also { cb ->
+            mFilterRegexCB = cb
+        }, BorderLayout.EAST)
+
         jtf.text = filterData?.msg
         mFilterMsgText = jtf
         return panel
@@ -149,7 +156,9 @@ class FilterEditDialog(
     private fun getFilterInfo(): FilterInfo {
         val name = mFilterNameText.text
         val msg = mFilterMsgText.text
-        return FilterInfo(name = name, msg = msg, tagList = mTagList.toList())
+        val isRegex = mFilterRegexCB.isSelected
+
+        return FilterInfo(name = name, msg = msg, tagList = mTagList.toList(), isRegex = isRegex)
     }
 }
 
