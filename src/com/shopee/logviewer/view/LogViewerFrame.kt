@@ -60,36 +60,40 @@ class LogViewerFrame: ILogRepository {
 
     private val mOnKeyClickListener = object : OnKeyClickListener {
         override fun onClickSingleLineKey() {
-            val result = JOptionPane.showInputDialog(uiFrame,"Input Line Number")
-            if (result.isNullOrEmpty()) {
-                return
-            }
-            val lineNumber = result.toInt() - 1
-            if (lineNumber < mContentTable.rowCount) {
-                //设置选中的行
-                mContentTable.setRowSelectionInterval(lineNumber, lineNumber)
-                //跳到指定的行
-                val rect = mContentTable.getCellRect(lineNumber, 0, true)
-                mContentTable.scrollRectToVisible(rect)
+            runCatching {
+                val lineNumber = JOptionPane.showInputDialog(uiFrame,"Input Line Number").toInt() - 1
+                if (lineNumber < mContentTable.rowCount) {
+                    //设置选中的行
+                    mContentTable.setRowSelectionInterval(lineNumber, lineNumber)
+                    //跳到指定的行
+                    val rect = mContentTable.getCellRect(lineNumber, 0, true)
+                    mContentTable.scrollRectToVisible(rect)
+                }
             }
         }
     }
 
-    init {
-        LogFilterStorage.init()
-        LogFilterStorage.addListener(object : OnFilterLoadedListener {
+    fun showLogViewer() {
+        supportFileDrag(uiFrame)
+
+        // restore latest filter tag
+        LogFilterStorage.init(listener = object : OnFilterLoadedListener {
+            // @UiThread
             override fun onLoaded(filterInfoList: List<FilterInfo>) {
+                print("LogFilterStorage.init callback with filterInfoList[${filterInfoList.size}]")
+
                 filterInfoList.forEach { filterInfo ->
                     addFilterInfo(filterInfo)
                 }
 
                 uiScrollerJList.setListData(mTagList.toTypedArray())
             }
-        })
-    }
 
-    fun showLogViewer() {
-        supportFileDrag(uiFrame)
+            // @UiThread
+            override fun onFailure(e: Throwable?) {
+                print("LogFilterStorage.init callback with Throwable:$e")
+            }
+        })
         uiFrame.addKeyListener(LogKeyListener(mOnKeyClickListener))
     }
 
