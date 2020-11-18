@@ -407,7 +407,7 @@ class LogViewerFrame: ILogRepository {
                 if (clickType == MenuClickType.CLICK_TYPE_COPY) {
                     //copy选中数据
                     val rowCount = mContentTable.selectedRows
-                    val listInfo = arrayListOf<LogInfo>()
+                    val strBuilder= StringBuilder()
                     for (index in rowCount.indices) {
                         val row = rowCount[index]
                         val time = mContentTable.getValueAt(row, 1) as String
@@ -415,17 +415,17 @@ class LogViewerFrame: ILogRepository {
                         val tag = mContentTable.getValueAt(row, 3) as String
                         val content = mContentTable.getValueAt(row, 4) as String
 
-                        listInfo.add(LogInfo(
-                            time = time,
-                            tag = tag,
-                            enumLevel = strLevel.toEnumLevel(),
-                            strLevel = strLevel,
-                            content = content
-                        ))
+                        strBuilder.append(time)
+                                .append(":")
+                                .append(strLevel)
+                                .append(":")
+                                .append(tag)
+                                .append(":")
+                                .append(content)
+                                .append('\n')
                     }
                     val cb = Toolkit.getDefaultToolkit().systemClipboard
-                    val mapper = ObjectMapper()
-                    val trans = StringSelection(mapper.writeValueAsString(listInfo))
+                    val trans = StringSelection(strBuilder.toString())
                     cb.setContents(trans, null)
                 }
             }
