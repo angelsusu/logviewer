@@ -9,7 +9,9 @@ import com.shopee.logviewer.filter.CombineFilter
 import com.shopee.logviewer.filter.IFilter
 import com.shopee.logviewer.filter.MessageFilter
 import com.shopee.logviewer.listener.DoubleClickListener
+import com.shopee.logviewer.listener.LogKeyListener
 import com.shopee.logviewer.listener.LogMouseListener
+import com.shopee.logviewer.listener.OnKeyClickListener
 import com.shopee.logviewer.util.*
 import com.shopee.logviewer.util.Utils.toEnumLevel
 import java.awt.*
@@ -36,12 +38,12 @@ import javax.swing.table.DefaultTableModel
  */
 class LogViewerFrame: ILogRepository {
 
-    private val uiFrame = fastLazy {
+    private val uiFrame by fastLazy {
         buildFrame()
     }
 
     /** key: [FilterInfo.name] */
-    private val uiScrollerJList = fastLazy {
+    private val uiScrollerJList by fastLazy {
         buildFilterScrollerJList()
     }
 
@@ -56,6 +58,23 @@ class LogViewerFrame: ILogRepository {
     private lateinit var mContentTable: JTable
     private val mTableCellRender = LogTableCellRenderer()
 
+    private val mOnKeyClickListener = object : OnKeyClickListener {
+        override fun onClickSingleLineKey() {
+            val result = JOptionPane.showInputDialog(uiFrame,"Input Line Number")
+            if (result.isNullOrEmpty()) {
+                return
+            }
+            val lineNumber = result.toInt() - 1
+            if (lineNumber < mContentTable.rowCount) {
+                //设置选中的行
+                mContentTable.setRowSelectionInterval(lineNumber, lineNumber)
+                //跳到指定的行
+                val rect = mContentTable.getCellRect(lineNumber, 0, true)
+                mContentTable.scrollRectToVisible(rect)
+            }
+        }
+    }
+
     init {
         LogFilterStorage.init()
         LogFilterStorage.addListener(object : OnFilterLoadedListener {
@@ -64,13 +83,14 @@ class LogViewerFrame: ILogRepository {
                     addFilterInfo(filterInfo)
                 }
 
-                uiScrollerJList.value.setListData(mTagList.toTypedArray())
+                uiScrollerJList.setListData(mTagList.toTypedArray())
             }
         })
     }
 
     fun showLogViewer() {
-        supportFileDrag(uiFrame.value)
+        supportFileDrag(uiFrame)
+        uiFrame.addKeyListener(LogKeyListener(mOnKeyClickListener))
     }
 
     private fun buildFrame(): JFrame = JFrame("Android LogViewer").also { frame ->
@@ -80,12 +100,13 @@ class LogViewerFrame: ILogRepository {
             panel.add(filterPanel, BorderLayout.NORTH)
             panel.add(getLogContentPanel(), BorderLayout.CENTER)
         }, BorderLayout.CENTER)
-
         frame.add(filterTagPanel, BorderLayout.WEST)
+        frame.isFocusable = true
         frame.isVisible = true
         frame.pack()
         frame.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
         frame.setBounds(300, 300,900, 662)
+        frame.requestFocusInWindow()
     }
 
     /** 左侧Filter Scroller Content Adapter */
@@ -169,7 +190,8 @@ class LogViewerFrame: ILogRepository {
     /** 左侧Filter Scroller列表 */
     private val filterTagScroller: JScrollPane
         get() = JScrollPane().also { scrollPane ->
-            scrollPane.setViewportView(uiScrollerJList.value) //在滚动面板中显示列表
+            scrollPane.setViewportView(uiScrollerJList) //在滚动面板中显示列表
+            uiScrollerJList.addKeyListener(LogKeyListener(mOnKeyClickListener))
         }
 
     /** 左上角Filter操作区域 */
@@ -203,8 +225,8 @@ class LogViewerFrame: ILogRepository {
         val scrollPane = JScrollPane(table) //创建滚动面板
         val tableModel = table.model as DefaultTableModel //获得表格模型
         tableModel.rowCount = 0 //清空表格中的数据
-        val columnNames = arrayOf<Any>("Time", "Level", "Tag", "Content")
-        tableModel.setColumnIdentifiers(arrayOf<Any>("Time", "Level", "Tag", "Content")) //设置表头
+        val columnNames = arrayOf<Any>("Index", "Time", "Level", "Tag", "Content")
+        tableModel.setColumnIdentifiers(columnNames) //设置表头
         table.rowHeight = 30
         table.model = tableModel //应用表格模型
         table.setShowGrid(true)
@@ -215,13 +237,14 @@ class LogViewerFrame: ILogRepository {
         // 设置表格列的单元格渲染器
         tableColumn.cellRenderer = mTableCellRender
         initPopupCopyMenu(table)
+        table.addKeyListener(LogKeyListener(mOnKeyClickListener))
         mContentTable = table
         return contentPane
     }
 
     private fun showFilterEditDialog(filterInfo: FilterInfo? = null) {
         FilterEditDialog(
-                frame = uiFrame.value,
+                frame = uiFrame,
                 clickListener = sFilterDialogClickListener,
                 filterData = filterInfo
         ).showDialog()
@@ -229,7 +252,7 @@ class LogViewerFrame: ILogRepository {
 
     /** 获取当前highlight的[FilterInfo] */
     private fun getHighlightFilter(): FilterInfo? {
-        val filterName = uiScrollerJList.value.selectedValue ?: return null
+        val filterName = uiScrollerJList.selectedValue ?: return null
 
         if (filterName.isBlank()) return null
 
@@ -279,7 +302,7 @@ class LogViewerFrame: ILogRepository {
 
     /** 自定义过滤条件删除后点击事件 */
     private val sTagMsgFilterDeleteListener = ActionListener {
-        val filterName: String = uiScrollerJList.value.selectedValue ?: return@ActionListener
+        val filterName: String = uiScrollerJList.selectedValue ?: return@ActionListener
 
         print("FilterDeleteListener >>> filterName[$filterName]")
         if (!mTagList.remove(filterName)) {
@@ -287,7 +310,7 @@ class LogViewerFrame: ILogRepository {
         }
 
         // 删除侧边栏UI Tag
-        uiScrollerJList.value.setListData(mTagList.toTypedArray())
+        uiScrollerJList.setListData(mTagList.toTypedArray())
 
         val filterInfo = mFilterMap[filterName] ?: return@ActionListener
 
@@ -316,7 +339,7 @@ class LogViewerFrame: ILogRepository {
     /** 添加新的Filter */
     private fun onFilterAddRecv(filterInfo: FilterInfo) {
         addFilterInfo(filterInfo)
-        uiScrollerJList.value.setListData(mTagList.toTypedArray())
+        uiScrollerJList.setListData(mTagList.toTypedArray())
 
         // 以最新的filter进行过滤
         logRepository.addFilter(filterInfo)
@@ -344,8 +367,9 @@ class LogViewerFrame: ILogRepository {
 
         logInfo ?: return
 
-        logInfo.forEach { info ->
-            tableModel.addRow(arrayOf<Any>(info.time, info.strLevel, info.tag, info.content))
+        for (index in logInfo.indices) {
+            val info = logInfo[index]
+            tableModel.addRow(arrayOf(index + 1, info.time, info.strLevel, info.tag, info.content))
         }
     }
 
@@ -358,10 +382,10 @@ class LogViewerFrame: ILogRepository {
                     val listInfo = arrayListOf<LogInfo>()
                     for (index in rowCount.indices) {
                         val row = rowCount[index]
-                        val time = mContentTable.getValueAt(row, 0) as String
-                        val strLevel = mContentTable.getValueAt(row, 1) as String
-                        val tag = mContentTable.getValueAt(row, 2) as String
-                        val content = mContentTable.getValueAt(row, 3) as String
+                        val time = mContentTable.getValueAt(row, 1) as String
+                        val strLevel = mContentTable.getValueAt(row, 2) as String
+                        val tag = mContentTable.getValueAt(row, 3) as String
+                        val content = mContentTable.getValueAt(row, 4) as String
 
                         listInfo.add(LogInfo(
                             time = time,
@@ -385,7 +409,7 @@ class LogViewerFrame: ILogRepository {
     private val sTagMsgFilterClearListener = ActionListener {
         mTagList.clear()
         mFilterMap.clear()
-        uiScrollerJList.value.setListData(mTagList.toTypedArray())
+        uiScrollerJList.setListData(mTagList.toTypedArray())
         LogFilterStorage.clear()
 
         logRepository.removeFilters()
