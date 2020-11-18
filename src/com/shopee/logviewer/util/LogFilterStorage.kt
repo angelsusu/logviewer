@@ -53,6 +53,13 @@ object LogFilterStorage {
 
     private fun parseXmlToJson(listener: OnFilterLoadedListener?) = mThreadPool.execute {
         val file = File(DIR_NAME + FILE_NAME)
+        if (!file.exists() || !file.isFile) {
+            print("parseXmlToJson() >>> tag cache dont exists")
+            SwingUtilities.invokeLater {
+                listener?.onLoaded(listOf())
+            }
+            return@execute
+        }
 
         val fisResult = runCatching {
             FileInputStream(file)
@@ -61,7 +68,9 @@ object LogFilterStorage {
         val fis = fisResult.getOrNull()
 
         if (fisResult.isFailure || null == fis) {
-            SwingUtilities.invokeLater { listener?.onFailure(fisResult.exceptionOrNull()) }
+            SwingUtilities.invokeLater {
+                listener?.onFailure(fisResult.exceptionOrNull())
+            }
             return@execute
         }
 
@@ -75,9 +84,13 @@ object LogFilterStorage {
         }
 
         if (parseResult.isSuccess) {
-            SwingUtilities.invokeLater { listener?.onLoaded(mFilterInfoList.toList()) }
+            SwingUtilities.invokeLater {
+                listener?.onLoaded(mFilterInfoList.toList())
+            }
         } else {
-            SwingUtilities.invokeLater { listener?.onFailure(parseResult.exceptionOrNull()) }
+            SwingUtilities.invokeLater {
+                listener?.onFailure(parseResult.exceptionOrNull())
+            }
         }
     }
 

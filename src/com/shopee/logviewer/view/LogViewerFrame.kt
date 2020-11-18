@@ -99,10 +99,9 @@ class LogViewerFrame: ILogRepository {
             // @UiThread
             override fun onFailure(e: Throwable?) {
                 print("LogFilterStorage.init callback with Throwable:$e")
+                AlertDialog.showAlert("Fail to restore Filter tags!")
                 mTagList.add(0, NO_FILTER_NAME)
                 uiScrollerJList.setListData(mTagList.toTypedArray())
-
-                AlertDialog.showAlert("Fail to restore Filter tags!")
             }
         })
         uiFrame.addKeyListener(LogKeyListener(mOnKeyClickListener))
@@ -301,8 +300,9 @@ class LogViewerFrame: ILogRepository {
     /** 左侧Filter栏点击触发器 */
     private val sFilterSelectListener = ListSelectionListener {
         val filterInfo = getHighlightFilter()
+
         filterInfo ?: run {
-            refreshLogTables(logRepository.getRawLogs())
+            logRepository.removeFilters()
             return@ListSelectionListener
         }
 
