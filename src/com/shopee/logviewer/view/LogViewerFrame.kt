@@ -60,7 +60,7 @@ class LogViewerFrame: ILogRepository {
     private val compoundMsgWidget = CompoundMessageWidget(funcAddFilter = logRepository::addFilter)
 
     private lateinit var mContentTable: JTable
-    private val mTableCellRender = LogTableCellRenderer()
+    private val mTableCellRender = LogTableCellRenderer(2)
 
     private val mOnKeyClickListener = object : OnKeyClickListener {
         override fun onClickSingleLineKey() {
@@ -247,9 +247,11 @@ class LogViewerFrame: ILogRepository {
         table.gridColor = Color.lightGray
         contentPane.add(scrollPane, BorderLayout.CENTER) //将面板增加到边界布局中央
         table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION)
-        val tableColumn = table.getColumn(columnNames[columnNames.size - 1])
         // 设置表格列的单元格渲染器
-        tableColumn.cellRenderer = mTableCellRender
+        for (index in columnNames.indices) {
+            val tableColumn = table.getColumn(columnNames[index])
+            tableColumn.cellRenderer = mTableCellRender
+        }
         initPopupCopyMenu(table)
         table.addKeyListener(LogKeyListener(mOnKeyClickListener))
         mContentTable = table

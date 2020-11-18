@@ -2,6 +2,7 @@ package com.shopee.logviewer.util
 
 import com.google.gson.Gson
 import com.shopee.logviewer.data.EnumLogLv
+import java.awt.Color
 
 /**
  * author: beitingsu
@@ -47,6 +48,14 @@ object Utils {
             it.value == this@toEnumLevel
         } ?: EnumLogLv.V
     }
+
+    val levelTextColorMap = mapOf(
+            V to Color(187,187,187),
+            D to Color(0,112,187),
+            I to Color(72,187,49),
+            W to Color(187,187,35),
+            E to Color(255,0,6)
+    )
 }
 
 object LogEncrypt {
