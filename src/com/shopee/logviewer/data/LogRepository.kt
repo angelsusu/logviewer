@@ -102,21 +102,21 @@ class LogRepository(
     }
 
     /** 文本过滤器 */
-    fun addFilter(message: String?) {
+    fun addFilter(message: String?, isRegex: Boolean) {
         if (rawLogs.isEmpty()) {
             print("addFilter() >>> empty raw")
             return
         }
 
         if (!filters.has(MessageFilter::class)) {
-            print("filter() >>> async filter with message[$message]")
-            val newFilter = MessageFilter(message = message)
+            print("filter() >>> async filter with regex[$isRegex] message[$message]")
+            val newFilter = MessageFilter(message = message, isRegex = isRegex)
             asyncFilter(filters.addAndCopy(newFilter), last = newFilter)
             return
         }
 
-        print("filter() >>> async filter with message[$message]")
-        val newFilter = MessageFilter(message = message)
+        print("filter() >>> async filter with regex[$isRegex] message[$message]")
+        val newFilter = MessageFilter(message = message, isRegex = isRegex)
         asyncFilter(filters.replaceAndCopy(newFilter), last = newFilter)
     }
 

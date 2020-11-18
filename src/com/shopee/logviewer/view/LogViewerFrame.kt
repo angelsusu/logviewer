@@ -12,10 +12,7 @@ import com.shopee.logviewer.listener.DoubleClickListener
 import com.shopee.logviewer.listener.LogMouseListener
 import com.shopee.logviewer.util.*
 import com.shopee.logviewer.util.Utils.toEnumLevel
-import java.awt.BorderLayout
-import java.awt.Color
-import java.awt.Component
-import java.awt.Toolkit
+import java.awt.*
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
 import java.awt.dnd.DnDConstants
@@ -27,8 +24,6 @@ import java.awt.event.ItemListener
 import java.io.File
 import javax.swing.*
 import javax.swing.border.EmptyBorder
-import javax.swing.event.DocumentEvent
-import javax.swing.event.DocumentListener
 import javax.swing.event.ListSelectionListener
 import javax.swing.table.DefaultTableModel
 
@@ -55,6 +50,8 @@ class LogViewerFrame: ILogRepository {
 
     /** 更新List的接口统一通过 [ILogRepository] callback */
     private val logRepository = LogRepository(observer = this@LogViewerFrame)
+    /** Message 和 Regex的复合过滤器 */
+    private val compoundMsgWidget = CompoundMessageWidget(funcAddFilter = logRepository::addFilter)
 
     private lateinit var mContentTable: JTable
     private val mTableCellRender = LogTableCellRenderer()
@@ -140,16 +137,12 @@ class LogViewerFrame: ILogRepository {
      */
     private val filterPanel: JPanel
         get() = JPanel().also { jp ->
-            jp.border = EmptyBorder(5, 0, 5, 5) //设置面板的边框
-            jp.layout = BorderLayout(0, 0) //设置内容面板为边界布局
+            jp.border = EmptyBorder(0, 0, 0, 0) //设置面板的边框
+            jp.layout = FlowLayout(FlowLayout.CENTER)
 
-            jp.add(msgFilterField, BorderLayout.CENTER)
-            jp.add(logLevelBox, BorderLayout.EAST)
-        }
-
-    private val msgFilterField: JTextField
-        get() = JTextField(25).also { field ->
-            field.document.addDocumentListener(MsgFilterEditListener(field))
+            jp.add(compoundMsgWidget.msgFilterField)
+            jp.add(compoundMsgWidget.regexCheckbox)
+            jp.add(logLevelBox)
         }
 
     /** 日志等级过滤器 */
@@ -312,15 +305,9 @@ class LogViewerFrame: ILogRepository {
 
         //highlight 文本信息
         val msg = when (lastFilter) {
-            is CombineFilter -> {
-                lastFilter.filterInfo.msg
-            }
-            is MessageFilter -> {
-                lastFilter.message
-            }
-            else -> {
-                ""
-            }
+            is CombineFilter -> lastFilter.filterInfo.msg
+            is MessageFilter -> lastFilter.message
+            else -> ""
         } ?: return
 
         highlightMsg(msg)
@@ -402,16 +389,6 @@ class LogViewerFrame: ILogRepository {
         LogFilterStorage.clear()
 
         logRepository.removeFilters()
-    }
-
-    /** 文本过滤条件EditText Listener */
-    inner class MsgFilterEditListener(private val textField: JTextField): DocumentListener {
-
-        override fun changedUpdate(e: DocumentEvent?) { logRepository.addFilter(textField.text) }
-
-        override fun insertUpdate(e: DocumentEvent?) { logRepository.addFilter(textField.text) }
-
-        override fun removeUpdate(e: DocumentEvent?) { logRepository.addFilter(textField.text) }
     }
 
     private fun highlightMsg(highlightMsg: String) {

@@ -7,7 +7,8 @@ import com.shopee.logviewer.data.LogInfo
  * @Time 2020/11/17
  */
 class MessageFilter(
-    val message: String?
+    val message: String?,
+    val isRegex: Boolean
 ): IFilter {
 
     override fun match(logInfo: LogInfo): Boolean {
@@ -19,7 +20,11 @@ class MessageFilter(
             return false
         }
 
-        return logInfo.content.contains(message, true)
+        return if (isRegex) {
+            message.toRegex().containsMatchIn(logInfo.content)
+        } else {
+            logInfo.content.contains(message, true)
+        }
     }
 
 }
