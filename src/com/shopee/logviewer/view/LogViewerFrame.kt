@@ -78,9 +78,14 @@ class LogViewerFrame: ILogRepository {
     }
 
     fun showLogViewer() {
+<<<<<<< Updated upstream
         supportFileDrag(uiFrame)
+=======
+        supportFileDrag(uiFrame.value)
+        AlertDialog.sFrame = uiFrame.value
+>>>>>>> Stashed changes
 
-        // restore latest filter tag
+            // restore latest filter tag
         LogFilterStorage.init(listener = object : OnFilterLoadedListener {
             // @UiThread
             override fun onLoaded(filterInfoList: List<FilterInfo>) {
@@ -98,8 +103,12 @@ class LogViewerFrame: ILogRepository {
             // @UiThread
             override fun onFailure(e: Throwable?) {
                 print("LogFilterStorage.init callback with Throwable:$e")
+<<<<<<< Updated upstream
                 mTagList.add(NO_FILTER_NAME)
                 uiScrollerJList.setListData(mTagList.toTypedArray())
+=======
+                AlertDialog.showAlert("Fail to restore Filter tags!")
+>>>>>>> Stashed changes
             }
         })
         uiFrame.addKeyListener(LogKeyListener(mOnKeyClickListener))
