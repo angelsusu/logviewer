@@ -1,8 +1,7 @@
 package com.shopee.logviewer.view
 
 import com.shopee.logviewer.data.LogInfo
-import java.awt.Component
-import java.awt.Dimension
+import java.awt.*
 import javax.swing.*
 
 
@@ -42,49 +41,36 @@ object LogDetailDialog {
     ): JDialog(frame) {
 
         init {
-            setContentView(frame = frame)
+            setContentView(parentFrame = frame)
         }
 
-        private fun setContentView(frame: JFrame) {
-            setLocationRelativeTo(frame)
-            setSize(300, 200)
+        private fun setContentView(parentFrame: JFrame) {
+            setLocationRelativeTo(parentFrame)
+            this.setSize(300, 200)
 
-            contentPane = JPanel().apply {
+            this.contentPane = JPanel().apply {
                 layout = BoxLayout(this, BoxLayout.Y_AXIS).apply {
-                    add(JPanel().apply {
-                        alignmentX = Component.LEFT_ALIGNMENT
-                        border = BorderFactory.createEmptyBorder(0, 0, 0, 0)
-                        add(Box.createHorizontalGlue())
-                        add(JLabel("TAG:"))
-                        add(Box.createRigidArea(Dimension(5, 0)))
-                        add(JLabel(logInfo.tag))
-                    })
-
-                    add(JPanel().apply {
-                        alignmentX = Component.LEFT_ALIGNMENT
-                        border = BorderFactory.createEmptyBorder(0, 0, 0, 0)
-                        add(Box.createHorizontalGlue())
-                        add(JLabel("TIME:"))
-                        add(Box.createRigidArea(Dimension(5, 0)))
-                        add(JLabel(logInfo.time))
-                    })
-
-                    add(JPanel().apply {
-                        alignmentX = Component.LEFT_ALIGNMENT
-                        border = BorderFactory.createEmptyBorder(0, 0, 0, 0)
-                        add(Box.createHorizontalGlue())
-                        add(JLabel("LEVEL:"))
-                        add(Box.createRigidArea(Dimension(5, 0)))
-                        add(JLabel(logInfo.strLevel))
-                    })
-
-                    add(JTextArea(logInfo.content).apply {
-                        alignmentX = Component.LEFT_ALIGNMENT
-                        lineWrap = true
-                        isEditable = false
-                    })
+                    alignmentX = Component.LEFT_ALIGNMENT
+                    border = BorderFactory.createEmptyBorder(0, 0, 0, 0)
                 }
+
+                add(buildPanel("TAG:", logInfo.tag))
+                add(buildPanel("TIME:", logInfo.time))
+                add(buildPanel("LEVEL:", logInfo.strLevel))
+                add(JTextArea(logInfo.content).apply {
+                    lineWrap = true
+                    isEditable = false
+                })
             }
+        }
+
+        private fun buildPanel(title: String?, msg: String?): JPanel = JPanel().apply {
+            border = BorderFactory.createEmptyBorder(0, 0, 0, 0)
+
+            add(Box.createHorizontalGlue())
+            add(JLabel(title))
+            add(Box.createRigidArea(Dimension(5, 0)))
+            add(JLabel(msg))
         }
 
         fun showDialog() {
