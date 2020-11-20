@@ -1,6 +1,5 @@
 package com.shopee.logviewer.view
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.shopee.logviewer.data.FilterInfo
 import com.shopee.logviewer.data.ILogRepository
 import com.shopee.logviewer.data.LogInfo
@@ -12,8 +11,12 @@ import com.shopee.logviewer.listener.DoubleClickListener
 import com.shopee.logviewer.listener.LogKeyListener
 import com.shopee.logviewer.listener.LogMouseListener
 import com.shopee.logviewer.listener.OnKeyClickListener
-import com.shopee.logviewer.util.*
+import com.shopee.logviewer.parser.ParseFinishListener
+import com.shopee.logviewer.util.LogFilterStorage
+import com.shopee.logviewer.util.OnFilterLoadedListener
+import com.shopee.logviewer.util.Utils
 import com.shopee.logviewer.util.Utils.toEnumLevel
+import com.shopee.logviewer.util.fastLazy
 import java.awt.*
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
@@ -156,7 +159,8 @@ class LogViewerFrame: ILogRepository {
                             dtde.rejectDrop() //否则拒绝拖拽来的数据
                         } else {
                             val file = fileList?.get(0) ?: return
-                            sLogParserHandler.parse(file)
+                            val parseHandler = LogParseHandlerFactory.getParseHandler(file.name)
+                            parseHandler?.parse(file, sLogParserListener)
                         }
                         dtde.dropComplete(true) //指示拖拽操作已完成
                     } else {
@@ -278,8 +282,8 @@ class LogViewerFrame: ILogRepository {
         return mFilterMap[filterName]
     }
 
-    /** Log解密回调 */
-    private val sLogParserHandler = LogParserHandler(object : ParseFinishListener {
+    /** Log解密回调监听器 */
+    private val sLogParserListener = object : ParseFinishListener {
         override fun onParseFinish(logInfo: List<LogInfo>) {
             // 更新元数据
             logRepository.updateMeta(logInfo)
@@ -291,7 +295,7 @@ class LogViewerFrame: ILogRepository {
 
             logRepository.addFilter(filter)
         }
-    })
+    }
 
     /** Filter添加Dialog监听器 */
     private val sFilterDialogClickListener = object : ClickListener {

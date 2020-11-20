@@ -81,7 +81,7 @@ class LogTableCellRenderer(private val levelColumn: Int) : DefaultTableCellRende
                         splitText = splitText.substring(highlightMsg.length)
                         setTextHighlight(textPane, highlightText)
                     }
-                    println("LogTableCellRenderer:$normalText:$highlightText:$splitText")
+                    //println("LogTableCellRenderer:$normalText:$highlightText:$splitText")
                 }
             }
         }
