@@ -258,6 +258,7 @@ class LogViewerFrame: ILogRepository {
             val tableColumn = table.getColumn(columnNames[index])
             tableColumn.cellRenderer = mTableCellRender
         }
+        Utils.adjustColumnWidth(table)
         initPopupCopyMenu(table)
         table.addKeyListener(LogKeyListener(mOnKeyClickListener))
         table.addMouseListener(LogTableMouseListener(jTable = table))

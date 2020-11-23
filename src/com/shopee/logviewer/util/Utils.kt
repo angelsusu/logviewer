@@ -3,6 +3,7 @@ package com.shopee.logviewer.util
 import com.google.gson.Gson
 import com.shopee.logviewer.data.EnumLogLv
 import java.awt.Color
+import javax.swing.JTable
 
 /**
  * author: beitingsu
@@ -73,6 +74,27 @@ object Utils {
             E to Color(255,0,6),
             A to Color(255,107,104)
     )
+
+    //调整行宽
+    fun adjustColumnWidth(table: JTable) {
+        val header = table.tableHeader
+        val rowCount = table.rowCount
+        val columns = table.columnModel.columns
+        while (columns.hasMoreElements()) {
+            val column = columns.nextElement()
+            val col = header.columnModel.getColumnIndex(column.identifier)
+            var width = table.tableHeader.defaultRenderer
+                    .getTableCellRendererComponent(table,column.identifier, false, false, -1, col).preferredSize.getWidth()
+            for (row in 0 until rowCount) {
+                val preferedWidth = table.getCellRenderer(row, col)
+                        .getTableCellRendererComponent(table,
+                                table.getValueAt(row, col), false, false, row,col).preferredSize.getWidth()
+                width = width.coerceAtLeast(preferedWidth)
+            }
+            header.resizingColumn = column // 此行很重要
+            column.width = (width + table.intercellSpacing.width).toInt()
+        }
+    }
 }
 
 object LogEncrypt {

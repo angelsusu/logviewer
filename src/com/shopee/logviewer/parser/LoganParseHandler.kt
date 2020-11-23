@@ -21,12 +21,17 @@ class LoganParseHandler : ILogParseHandler {
     private val mParser = LoganParser(LogEncrypt.ENCRYPT_KEY.toByteArray(), LogEncrypt.ENCRYPT_IV.toByteArray())
 
     override fun parse(logFile: File, parseFinishListener: ParseFinishListener?) {
-        val outFileName = logFile.absolutePath + "_parse.txt"
         Thread().run {
-            safelyCreate { FileInputStream(File(logFile.absolutePath)) }?.safelyUse { input ->
-                safelyCreate { FileOutputStream(File(outFileName)) }?.safelyUse { output ->
-                    mParser.parse(input, output)
-                    onParseFinish(outFileName, parseFinishListener)
+            //已经是解密后的文件
+            if (logFile.name.substring(logFile.name.lastIndexOf(".") + 1) == "log") {
+                onParseFinish(logFile.absolutePath, parseFinishListener)
+            } else {
+                val outFileName = logFile.absolutePath + "_parse.txt"
+                safelyCreate { FileInputStream(File(logFile.absolutePath)) }?.safelyUse { input ->
+                    safelyCreate { FileOutputStream(File(outFileName)) }?.safelyUse { output ->
+                        mParser.parse(input, output)
+                        onParseFinish(outFileName, parseFinishListener)
+                    }
                 }
             }
         }
