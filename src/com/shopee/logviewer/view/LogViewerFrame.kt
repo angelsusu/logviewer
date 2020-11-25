@@ -365,7 +365,7 @@ class LogViewerFrame: ILogRepository {
 
             if (2 == evt.clickCount) {
                 val rowIndex = jTable.rowAtPoint(evt.point)
-                val logInfo = logRepository.getRawOrNull(rowIndex)
+                val logInfo = logRepository.getFromFilterLogs(rowIndex)
 
                 if (-1 != rowIndex && null != logInfo) {
                     LogDetailDialog.showLogDetail(frame = uiFrame, logInfo = logInfo)

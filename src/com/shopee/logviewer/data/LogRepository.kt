@@ -21,6 +21,8 @@ class LogRepository(
     private val rawLogs: ArrayList<LogInfo> = arrayListOf()
     /** 过滤规则组合，目前的功能中每种[IFilter]仅支持一个 */
     private val filters: ArrayList<IFilter> = arrayListOf()
+    /** 经过[filters]过滤后的Log */
+    private var filterLogs: List<LogInfo>? = null
     /** 过滤工作线程 */
     private val workThread = Thread("filter-thread")
 
@@ -33,9 +35,12 @@ class LogRepository(
 
         rawLogs.clear()
         rawLogs.addAll(infoList)
+        filterLogs = infoList
     }
 
-    fun getRawOrNull(index: Int) = rawLogs.getOrNull(index)
+    fun getFromRawLogs(index: Int) = rawLogs.getOrNull(index)
+
+    fun getFromFilterLogs(index: Int) = filterLogs?.getOrNull(index)
 
     /** @param filterInfo 根据[FilterInfo]过滤 */
     fun addFilter(filterInfo: FilterInfo) {
@@ -191,6 +196,7 @@ class LogRepository(
     private fun asyncFilter(filters: List<IFilter>, last: IFilter?) = workThread.run {
         if (filters.isEmpty()) {
             SwingUtilities.invokeLater {
+                filterLogs = rawLogs
                 observer.onFilterResult(last, rawLogs)
             }
             return@run
@@ -203,6 +209,7 @@ class LogRepository(
         }
 
         SwingUtilities.invokeLater {
+            filterLogs = filterResult
             observer.onFilterResult(last, filterResult)
         }
     }
