@@ -1,5 +1,6 @@
 package com.shopee.logviewer.util
 
+import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -29,6 +30,15 @@ object DateFormatUtils {
             format?.format(date) ?: ""
         } catch (e: Exception) {
             throw IllegalArgumentException(e.message)
+        }
+    }
+
+    fun getFormatTime(dateStr: String, format: String): Long {
+        val dateFormat = dateFormatMap[format]?.get()
+        return try {
+            dateFormat?.parse(dateStr)?.time ?: 0L
+        } catch (e: ParseException) {
+            0L
         }
     }
 }

@@ -65,19 +65,22 @@ class LoganParseHandler : ILogParseHandler {
         } catch (except: Exception) {
             null
         }
-
-        return parseLogInfo?.let { parseLogInfo ->
-            if (!parseLogInfo.content.contains("LoganService")) {
-                return null
+        return try {
+            parseLogInfo?.let { parseLogInfo ->
+                if (!parseLogInfo.content.contains("LoganService")) {
+                    return null
+                }
+                val time = DateFormatUtils.getDateToString(parseLogInfo.timestamp,
+                        DateFormatUtils.DATE_FORMAT_YEAR_TO_MILL)
+                val index = parseLogInfo.content.indexOf(" ")
+                val tag = parseLogInfo.content.substring(14, index - 1) //不包含"|LoganService|"
+                val content = parseLogInfo.content.substring(index + 1)
+                val enumLevel = parseLogInfo.level.toEnumLevel()
+                val strLevel = Utils.logLevelConvertMap.getOrDefault(enumLevel, Utils.DEFAULT_LOG_STR_LEVEL)
+                LogInfo(time = time, tag = tag, strLevel = strLevel, enumLevel = enumLevel, content = content)
             }
-            val time = DateFormatUtils.getDateToString(parseLogInfo.timestamp,
-                    DateFormatUtils.DATE_FORMAT_YEAR_TO_MILL)
-            val index = parseLogInfo.content.indexOf(" ")
-            val tag = parseLogInfo.content.substring(14, index - 1) //不包含"|LoganService|"
-            val content = parseLogInfo.content.substring(index + 1)
-            val enumLevel = parseLogInfo.level.toEnumLevel()
-            val strLevel = Utils.logLevelConvertMap.getOrDefault(enumLevel, Utils.DEFAULT_LOG_STR_LEVEL)
-            LogInfo(time = time, tag = tag, strLevel = strLevel, enumLevel = enumLevel, content = content)
+        } catch (exception: Exception) {
+            null
         }
     }
 }
