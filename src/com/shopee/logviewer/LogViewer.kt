@@ -9,4 +9,6 @@ import com.shopee.logviewer.view.LogViewerFrame
  */
 fun main() {
     LogViewerFrame().showLogViewer()
+
+    Thread.setDefaultUncaughtExceptionHandler(CrashHandler())
 }

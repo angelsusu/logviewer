@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.dataformat.xml.JacksonXmlModule
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.shopee.logviewer.data.FilterInfo
+import com.shopee.logviewer.util.Utils.DIR_NAME
 import java.io.File
 import java.io.FileInputStream
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -20,8 +21,6 @@ import javax.swing.SwingUtilities
  */
 object LogFilterStorage {
 
-    private val HOME_PATH = System.getProperty("user.home")
-    private val DIR_NAME = "$HOME_PATH/FoodyLogViewer"
     private const val FILE_NAME = "/filterInfo.xml"
 
     private var mFilterInfoList = CopyOnWriteArrayList<FilterInfo>()

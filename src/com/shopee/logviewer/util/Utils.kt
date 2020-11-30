@@ -27,6 +27,9 @@ object Utils {
 
     const val DEFAULT_LOG_STR_LEVEL = V
 
+    private val HOME_PATH = System.getProperty("user.home")
+    val DIR_NAME = "$HOME_PATH/FoodyLogViewer"
+
     val logLevelMap = mapOf(
             V to EnumLogLv.V,
             D to EnumLogLv.D,

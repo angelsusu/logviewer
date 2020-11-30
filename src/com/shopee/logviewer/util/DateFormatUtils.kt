@@ -11,12 +11,18 @@ import java.util.*
 object DateFormatUtils {
 
     const val DATE_FORMAT_YEAR_TO_MILL = "yyyy-MM-dd HH:mm:ss.SSS"
+    const val DATE_FORMAT_MONTH_TO_MILL = "MM-dd HH:mm:ss.SSS"
 
     private val dateFormatMap by lazy {
         hashMapOf(
                 DATE_FORMAT_YEAR_TO_MILL to object : ThreadLocal<SimpleDateFormat>() {
                     override fun initialValue(): SimpleDateFormat {
                         return SimpleDateFormat(DATE_FORMAT_YEAR_TO_MILL)
+                    }
+                },
+                DATE_FORMAT_MONTH_TO_MILL to object : ThreadLocal<SimpleDateFormat>() {
+                    override fun initialValue(): SimpleDateFormat {
+                        return SimpleDateFormat(DATE_FORMAT_MONTH_TO_MILL)
                     }
                 }
         )
