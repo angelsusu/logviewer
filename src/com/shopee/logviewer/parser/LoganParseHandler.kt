@@ -72,12 +72,14 @@ class LoganParseHandler : ILogParseHandler {
                 }
                 val time = DateFormatUtils.getDateToString(parseLogInfo.timestamp,
                         DateFormatUtils.DATE_FORMAT_YEAR_TO_MILL)
+                val pid = parseLogInfo.threadName
+                val tid = parseLogInfo.threadId.toString()
                 val index = parseLogInfo.content.indexOf(" ")
                 val tag = parseLogInfo.content.substring(14, index - 1) //不包含"|LoganService|"
                 val content = parseLogInfo.content.substring(index + 1)
                 val enumLevel = parseLogInfo.level.toEnumLevel()
                 val strLevel = Utils.logLevelConvertMap.getOrDefault(enumLevel, Utils.DEFAULT_LOG_STR_LEVEL)
-                LogInfo(time = time, tag = tag, strLevel = strLevel, enumLevel = enumLevel, content = content)
+                LogInfo(time = time, tag = tag,pid = pid, tid = tid, strLevel = strLevel, enumLevel = enumLevel, content = content)
             }
         } catch (exception: Exception) {
             null

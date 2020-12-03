@@ -7,6 +7,8 @@ package com.shopee.logviewer.data
  */
 data class LogInfo(
     val time: String,
+    val pid: String = "",
+    val tid: String = "",
     val tag: String,
     val strLevel: String,
     val enumLevel: EnumLogLv,

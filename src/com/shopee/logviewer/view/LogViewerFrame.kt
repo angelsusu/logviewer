@@ -65,7 +65,7 @@ class LogViewerFrame: ILogRepository {
     private val compoundMsgWidget = CompoundMessageWidget(funcAddFilter = logRepository::addFilter)
 
     private lateinit var mContentTable: JTable
-    private val mTableCellRender = LogTableCellRenderer(2)
+    private val mTableCellRender = LogTableCellRenderer(4)
 
     private val mOnKeyClickListener = object : OnKeyClickListener {
         override fun onClickSingleLineKey() {
@@ -245,7 +245,7 @@ class LogViewerFrame: ILogRepository {
         val scrollPane = JScrollPane(table) //创建滚动面板
         val tableModel = table.model as DefaultTableModel //获得表格模型
         tableModel.rowCount = 0 //清空表格中的数据
-        val columnNames = arrayOf<Any>("Index", "Time", "Level", "Tag", "Content")
+        val columnNames = arrayOf<Any>("Index", "Time", "pid", "tid", "Level", "Tag", "Content")
         tableModel.setColumnIdentifiers(columnNames) //设置表头
         table.rowHeight = 30
         table.model = tableModel //应用表格模型
@@ -433,7 +433,7 @@ class LogViewerFrame: ILogRepository {
 
         for (index in logInfo.indices) {
             val info = logInfo[index]
-            tableModel.addRow(arrayOf(index + 1, info.time, info.strLevel, info.tag, info.content))
+            tableModel.addRow(arrayOf(index + 1, info.time, info.pid, info.tid, info.strLevel, info.tag, info.content))
         }
     }
 
@@ -447,11 +447,17 @@ class LogViewerFrame: ILogRepository {
                     for (index in rowCount.indices) {
                         val row = rowCount[index]
                         val time = mContentTable.getValueAt(row, 1) as String
-                        val strLevel = mContentTable.getValueAt(row, 2) as String
-                        val tag = mContentTable.getValueAt(row, 3) as String
-                        val content = mContentTable.getValueAt(row, 4) as String
+                        val pid = mContentTable.getValueAt(row, 2) as String
+                        val tid = mContentTable.getValueAt(row, 3) as String
+                        val strLevel = mContentTable.getValueAt(row, 4) as String
+                        val tag = mContentTable.getValueAt(row, 5) as String
+                        val content = mContentTable.getValueAt(row, 6) as String
 
                         strBuilder.append(time)
+                                .append(":")
+                                .append(pid)
+                                .append(":")
+                                .append(tid)
                                 .append(":")
                                 .append(strLevel)
                                 .append(":")
